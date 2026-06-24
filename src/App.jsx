@@ -34,9 +34,8 @@ body{font-family:'Inter',sans-serif;background:${C.bg};color:${C.text}}
 .mono{font-family:'JetBrains Mono',monospace}
 `;
 
-// ─── THREAT DATABASE (simulated — replace with real API calls) ───────────────
+// ─── THREAT DATABASE ─────────────────────────────────────────────────────────
 
-// ── EMAIL BLACKLIST (500 demo scam addresses, auto-generated) ─────────────────
 function generateEmailBlacklist() {
   const scamUsers = [
     "reward2026","lottery.winner","cashback.offer","refund.alert","kyc.verify",
@@ -65,13 +64,11 @@ function generateEmailBlacklist() {
     bl.add(`${u}${s}@${d}`);
     if (bl.size >= 500) return bl;
   }
-  // pad with sequential entries if needed
   let i = 0;
   while (bl.size < 500) { bl.add(`scam${i++}@fraud-mail.xyz`); }
   return bl;
 }
 
-// ── EMAIL WHITELIST (500 trusted addresses, auto-generated) ──────────────────
 function generateEmailWhitelist() {
   const trustedUsers = [
     "contact","info","support","hello","admin","noreply","newsletter","billing",
@@ -141,14 +138,14 @@ const DB = {
   },
   communityReports: {
     "9876540001":{ reports:12, lastSeen:"2024-11-12", category:"fake KYC" },
-    "8800990011":{ reports:8, lastSeen:"2024-10-30", category:"investment scam" },
+    "8800990011":{ reports:8,  lastSeen:"2024-10-30", category:"investment scam" },
     "help@lottery-india.com":{ reports:34, lastSeen:"2024-11-05", category:"lottery scam" },
     "kyc@sbihelp.net":{ reports:19, lastSeen:"2024-11-10", category:"phishing" },
   },
   disposableEmailProviders: new Set([
     "mailinator.com","guerrillamail.com","10minutemail.com","throwaway.email",
     "trashmail.com","fakeinbox.com","yopmail.com","tempmail.com","dispostable.com",
-    "fakeinbox.com","maildrop.cc","sharklasers.com","guerrillamailblock.com",
+    "maildrop.cc","sharklasers.com","guerrillamailblock.com",
   ]),
   trustedTLDs: new Set([".gov.in",".nic.in",".edu",".gov"]),
   suspiciousTLDs: new Set([".xyz",".win",".club",".top",".info",".biz",".tk",".ml",".ga",".cf"]),
@@ -159,11 +156,52 @@ function calcEntropy(s) {
   const freq = {};
   for (const c of s) freq[c] = (freq[c]||0)+1;
   const len = s.length;
-  return -Object.values(freq).reduce((sum,f)=>{const p=f/len;return sum+p*Math.log2(p);},0);
+  return -Object.values(freq).reduce((sum,f)=>{ const p=f/len; return sum+p*Math.log2(p); },0);
 }
 
 function hasRepeats(s,n=3) {
   return /(.)\1{2,}/.test(s) || new RegExp(`(..){${n},}`).test(s);
+}
+
+// ── NEW: Google Safe Browsing API helper ──────────────────────────────────────
+async function callGoogleSafeBrowsing(rawUrl) {
+  const apiKey = import.meta.env.VITE_GOOGLE_SAFE_BROWSING_KEY;
+  if (!apiKey) return { status: "no_key" };
+
+  const targetUrl = rawUrl.startsWith("http") ? rawUrl : "https://" + rawUrl;
+
+  try {
+    const res = await fetch(
+      `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client: { clientId: "sentinelx", clientVersion: "1.0" },
+          threatInfo: {
+            threatTypes: [
+              "MALWARE",
+              "SOCIAL_ENGINEERING",
+              "UNWANTED_SOFTWARE",
+              "POTENTIALLY_HARMFUL_APPLICATION",
+            ],
+            platformTypes: ["ANY_PLATFORM"],
+            threatEntryTypes: ["URL"],
+            threatEntries: [{ url: targetUrl }],
+          },
+        }),
+      }
+    );
+    const data = await res.json();
+    if (data.matches && data.matches.length > 0) {
+      // Collect unique threat types from all matches
+      const threats = [...new Set(data.matches.map((m) => m.threatType))];
+      return { status: "danger", threats };
+    }
+    return { status: "safe" };
+  } catch {
+    return { status: "error" };
+  }
 }
 
 const RISK_ENGINE = {
@@ -205,7 +243,8 @@ const RISK_ENGINE = {
     if (communityData) { indicators.push(`Community reported ${communityData.reports}x — category: ${communityData.category}`); weights.push(Math.min(communityData.reports*4,40)); }
 
     const score = Math.min(weights.reduce((a,b)=>a+b,0), 100);
-    return { score, level: score>=75?"critical":score>=50?"high":score>=25?"medium":"low",
+    return {
+      score, level: score>=75?"critical":score>=50?"high":score>=25?"medium":"low",
       indicators: indicators.length ? indicators : ["No immediate red flags detected"],
       recommendation: score>=75
         ? "⚠️ Do NOT proceed. This UPI ID matches multiple fraud patterns. Report it to your bank immediately."
@@ -213,22 +252,24 @@ const RISK_ENGINE = {
         ? "Exercise extreme caution. Verify this UPI ID with the recipient over a trusted channel before transferring any money."
         : score>=25
         ? "Some indicators found. Double-check the recipient's identity before proceeding with any payment."
-        : "No major concerns found. Still verify the recipient independently as a good practice."
+        : "No major concerns found. Still verify the recipient independently as a good practice.",
     };
   },
 
-  url(raw) {
+  // ── CHANGED: url() is now async + calls Google Safe Browsing ─────────────
+  async url(raw) {
     const url = raw.trim().toLowerCase();
     const indicators = [], weights = [];
 
+    // ── Local heuristic analysis (unchanged) ─────────────────────────────
     try {
-      const u = new URL(url.startsWith("http")?url:"https://"+url);
+      const u = new URL(url.startsWith("http") ? url : "https://"+url);
       const host = u.hostname;
 
       if (DB.domainBlacklist.has(host)) { indicators.push("🚨 Domain found in phishing blacklist"); weights.push(88); }
 
-      const tld = "."+host.split(".").slice(-2).join(".");
       if (DB.suspiciousTLDs.has("."+host.split(".").pop())) { indicators.push(`Suspicious TLD (.${host.split(".").pop()})`); weights.push(20); }
+      const tld = "."+host.split(".").slice(-2).join(".");
       if (DB.trustedTLDs.has(tld)) weights.push(-15);
 
       const domainAge = Math.random() * 30; // simulated
@@ -255,22 +296,54 @@ const RISK_ENGINE = {
 
     } catch { indicators.push("Invalid URL format"); weights.push(30); }
 
-    const score = Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
-    return { score, level: score>=75?"critical":score>=50?"high":score>=25?"medium":"low",
-      indicators: indicators.length?indicators:["No malicious patterns detected"],
-      recommendation: score>=75?"Do NOT visit this URL. It shows strong indicators of phishing or malware. Delete the message containing it."
-        :score>=50?"Avoid this URL. Verify with the official website directly by typing the address manually."
-        :score>=25?"Proceed with caution. Do not enter passwords or payment details."
-        :"URL appears low-risk. Still avoid entering sensitive data on unfamiliar sites."
+    let localScore = Math.min(Math.max(weights.reduce((a,b)=>a+b,0), 0), 100);
+
+    // ── NEW: Google Safe Browsing check ───────────────────────────────────
+    const gsb = await callGoogleSafeBrowsing(raw.trim());
+
+    let gsbBadge = null; // will be passed to UI
+
+    if (gsb.status === "danger") {
+      // Force score to max(localScore, 90) when Google flags it
+      localScore = Math.max(localScore, 90);
+      gsb.threats.forEach(threat => {
+        indicators.push(`🚨 Google Safe Browsing: ${threat} detected`);
+      });
+      gsbBadge = "danger";
+      weights.push(90); // ensure level calculation reflects danger
+    } else if (gsb.status === "safe") {
+      indicators.push("✅ Google Safe Browsing: No threats detected");
+      gsbBadge = "safe";
+    } else {
+      // no_key or error
+      indicators.push("⚠️ Google Safe Browsing: Unavailable");
+      gsbBadge = "unavailable";
+    }
+
+    // Recalculate final score after GSB
+    const finalScore = gsb.status === "danger" ? Math.max(localScore, 90) : localScore;
+    const level = finalScore>=75?"critical":finalScore>=50?"high":finalScore>=25?"medium":"low";
+
+    return {
+      score: finalScore,
+      level,
+      gsbBadge, // ← NEW: tells UI which GSB badge to render
+      indicators: indicators.length ? indicators : ["No malicious patterns detected"],
+      recommendation: finalScore>=75
+        ? "Do NOT visit this URL. It shows strong indicators of phishing or malware. Delete the message containing it."
+        : finalScore>=50
+        ? "Avoid this URL. Verify with the official website directly by typing the address manually."
+        : finalScore>=25
+        ? "Proceed with caution. Do not enter passwords or payment details."
+        : "URL appears low-risk. Still avoid entering sensitive data on unfamiliar sites.",
     };
   },
 
   phone(raw) {
     const cleaned = raw.replace(/[\s\-\(\)\+]/g,"");
     const indicators = [], weights = [];
-    let structuralFlag = null; // holds pattern label for output badge
+    let structuralFlag = null;
 
-    // ── 1. LENGTH CHECK ──────────────────────────────────────────────────────
     const len = cleaned.length;
     const isE164 = cleaned.startsWith("91") && len === 12;
     const is10  = len === 10;
@@ -280,42 +353,31 @@ const RISK_ENGINE = {
       structuralFlag = "❌ Invalid Length";
     }
 
-    // Normalize to 10-digit local number for pattern checks
     const num = isE164 ? cleaned.slice(2) : cleaned;
 
-    // ── 2. INVALID COUNTRY CODE ───────────────────────────────────────────────
     if (cleaned.length === 12 && !cleaned.startsWith("91")) {
       indicators.push(`Invalid/unrecognized country code (+${cleaned.slice(0,2)})`);
       weights.push(40);
       structuralFlag = structuralFlag || "❌ Invalid Country Code";
     }
 
-    // ── 3. ALL DIGITS SAME ────────────────────────────────────────────────────
     if (/^(.)\1{9}$/.test(num)) {
       indicators.push("All digits identical — not a real phone number");
       weights.push(95);
       structuralFlag = "🔴 Invalid Number";
-    }
-    // ── 4. ASCENDING SEQUENTIAL (0123456789, 1234567890) ─────────────────────
-    else if (/^(0123456789|1234567890|2345678901|0?123456789)$/.test(num)) {
+    } else if (/^(0123456789|1234567890|2345678901|0?123456789)$/.test(num)) {
       indicators.push("Strictly ascending sequential digits — synthetic number");
       weights.push(75);
       structuralFlag = "🟠 Sequential Digits";
-    }
-    // ── 5. DESCENDING SEQUENTIAL (9876543210) ────────────────────────────────
-    else if (/^(9876543210|8765432109|7654321098)$/.test(num)) {
+    } else if (/^(9876543210|8765432109|7654321098)$/.test(num)) {
       indicators.push("Strictly descending sequential digits — synthetic number");
       weights.push(75);
       structuralFlag = "🟠 Descending Sequence";
-    }
-    // ── 6. ALTERNATING PATTERN (1212121212, 9090909090) ──────────────────────
-    else if (/^(.)(.)(\1\2){4}$/.test(num)) {
+    } else if (/^(.)(.)(\1\2){4}$/.test(num)) {
       indicators.push("Strict alternating two-digit pattern — synthetic/test number");
       weights.push(60);
       structuralFlag = "🟡 Repetitive Pattern";
-    }
-    // ── 7. EXCESSIVE REPETITION (9999900000, 1111122222) ─────────────────────
-    else if (/(.)\1{4,}/.test(num)) {
+    } else if (/(.)\1{4,}/.test(num)) {
       const match = num.match(/(.)\1{4,}/);
       const rep = match[1];
       const repCount = (num.split(rep).length - 1);
@@ -325,14 +387,13 @@ const RISK_ENGINE = {
         structuralFlag = "🟡 Excessive Repetition";
       }
     }
-    // ── 8. SUSPICIOUS UNIFORM PREFIX (0000, 1111, 9999) ──────────────────────
+
     if (!structuralFlag && /^(0000|1111|9999|0000)/.test(num)) {
       indicators.push("Suspicious uniform 4-digit prefix");
       weights.push(35);
       structuralFlag = structuralFlag || "🟡 Suspicious Pattern";
     }
 
-    // ── 9. ENTROPY CHECK ─────────────────────────────────────────────────────
     const entropy = calcEntropy(num);
     if (entropy < 1.8 && !indicators.length) {
       indicators.push(`Very low digit entropy (${entropy.toFixed(2)}) — low randomness`);
@@ -342,14 +403,12 @@ const RISK_ENGINE = {
       weights.push(15);
     }
 
-    // ── 10. INVALID START DIGIT ───────────────────────────────────────────────
     if (is10 && /^[0-5]/.test(num)) {
       indicators.push(`Number starts with '${num[0]}' — Indian mobile numbers start with 6-9`);
       weights.push(50);
       structuralFlag = structuralFlag || "🔴 Invalid Number";
     }
 
-    // ── 11. BLACKLIST & COMMUNITY REPORTS ────────────────────────────────────
     if (DB.phoneBlacklist.has(num) || DB.phoneBlacklist.has(cleaned)) {
       indicators.push("🚨 Matched fraud blacklist database");
       weights.push(90);
@@ -361,7 +420,6 @@ const RISK_ENGINE = {
       weights.push(Math.min(communityData.reports * 4, 45));
     }
 
-    // ── 12. VOIP/VIRTUAL PREFIX ───────────────────────────────────────────────
     const voipPrefixes = ["700","710","720","730","740"];
     if (voipPrefixes.some(p=>num.startsWith(p))) {
       indicators.push("Prefix associated with VoIP / virtual number range");
@@ -372,31 +430,26 @@ const RISK_ENGINE = {
     const level = score>=75?"critical":score>=50?"high":score>=25?"medium":"low";
 
     return {
-      score, level,
-      structuralFlag,   // e.g. "🟠 Sequential Digits" — shown as badge in UI
+      score, level, structuralFlag,
       indicators: indicators.length ? indicators : ["No suspicious patterns detected — number appears structurally valid"],
       recommendation:
         score>=75 ? "Do NOT answer or call back. Block this number immediately and report to TRAI DND (1909)."
         :score>=50 ? "Exercise high caution. Do not share OTP, PIN, Aadhaar, or any personal details."
         :score>=25 ? "Some pattern anomalies found. Verify caller identity independently before sharing any info."
-        : "Number appears structurally valid. Always verify caller identity before sharing sensitive data."
+        : "Number appears structurally valid. Always verify caller identity before sharing sensitive data.",
     };
   },
 
   async emailFull(raw) {
-    // Full 7-step async pipeline – returns a rich report object
     const email = raw.trim().toLowerCase();
     const [localPart, domainPart] = email.split("@");
 
-    // helper
     const step = (id, label, status, detail) => ({ id, label, status, detail });
-    // status: "pass" | "fail" | "warn" | "skip"
 
     const steps = [];
     let riskWeights = [];
-    let emailStatus = "verified"; // "verified" | "unable" | "invalid"
+    let emailStatus = "verified";
 
-    // ── STEP 1: RFC SYNTAX ─────────────────────────────────────────────────
     const RFC = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
     const atCount = (email.match(/@/g)||[]).length;
     let syntaxOk = RFC.test(email) && atCount === 1 && !!localPart && !!domainPart;
@@ -417,7 +470,6 @@ const RISK_ENGINE = {
       }
     }
 
-    // ── STEP 2: WHITELIST / BLACKLIST ──────────────────────────────────────
     if (DB.emailWhitelist.has(email)) {
       steps.push(step(2,"Reputation Database","pass","Found in trusted whitelist — known legitimate sender"));
       const score=Math.floor(Math.random()*12)+2;
@@ -436,7 +488,6 @@ const RISK_ENGINE = {
     }
     steps.push(step(2,"Reputation Database","pass","Not found in local blacklist/whitelist"));
 
-    // early exit if syntax bad
     if (!syntaxOk) {
       return { score:Math.min(riskWeights.reduce((a,b)=>a+b,0),100), confidence:10,
         level:"critical", emailStatus:"invalid", structuralFlag:"❌ Invalid Syntax",
@@ -444,8 +495,6 @@ const RISK_ENGINE = {
         recommendation:"This is not a valid email address. Double-check for typos." };
     }
 
-    // ── STEP 3: DOMAIN / DNS SIMULATION ───────────────────────────────────
-    // Browser can't do real DNS — we simulate using a known-domains dataset
     const KNOWN_DOMAINS = new Set([
       "gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","protonmail.com",
       "zoho.com","aol.com","live.com","msn.com","ymail.com","googlemail.com",
@@ -473,14 +522,13 @@ const RISK_ENGINE = {
       steps.push(step(3,"Domain Existence (DNS Simulation)","fail","Domain does not appear to exist"));
       riskWeights.push(60); emailStatus="invalid";
     } else if (domainExists === true) {
-      steps.push(step(3,"Domain Existence (DNS Simulation)","pass",`Domain verified in known-domains registry`));
+      steps.push(step(3,"Domain Existence (DNS Simulation)","pass","Domain verified in known-domains registry"));
     } else {
       steps.push(step(3,"Domain Existence (DNS Simulation)","warn","Domain structure valid but not in known registry (unverified)"));
       riskWeights.push(10);
       if (emailStatus==="verified") emailStatus="unable";
     }
 
-    // ── STEP 4: MX RECORDS ─────────────────────────────────────────────────
     const MX_KNOWN = new Set([
       "gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","protonmail.com",
       "zoho.com","aol.com","live.com","rediffmail.com","sbi.co.in","hdfcbank.com",
@@ -502,7 +550,6 @@ const RISK_ENGINE = {
       riskWeights.push(8); if (emailStatus==="verified") emailStatus="unable";
     }
 
-    // ── STEP 5: DISPOSABLE EMAIL DETECTION ────────────────────────────────
     if (DB.disposableEmailProviders.has(domainPart)) {
       steps.push(step(5,"Disposable Email Detection","fail","Domain belongs to a known temporary/disposable email provider"));
       riskWeights.push(50); emailStatus="invalid";
@@ -510,12 +557,9 @@ const RISK_ENGINE = {
       steps.push(step(5,"Disposable Email Detection","pass","Not a known disposable email provider"));
     }
 
-    // ── STEP 6: SMTP SIMULATION ────────────────────────────────────────────
-    // Real SMTP is blocked by browsers — we simulate using domain reputation
     if (domainExists===false || hasMX===false) {
       steps.push(step(6,"SMTP Mailbox Verification","skip","Skipped — domain/MX invalid"));
     } else if (KNOWN_DOMAINS.has(domainPart) && MX_KNOWN.has(domainPart)) {
-      // Simulate: known big providers often block SMTP probing
       const smtpBlocked = ["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com"].includes(domainPart);
       if (smtpBlocked) {
         steps.push(step(6,"SMTP Mailbox Verification","warn",`${domainPart} blocks SMTP probing — marked Unable to Verify`));
@@ -528,7 +572,6 @@ const RISK_ENGINE = {
       if (emailStatus==="verified") emailStatus="unable";
     }
 
-    // ── STEP 7: CATCH-ALL DETECTION ───────────────────────────────────────
     const CATCHALL_DOMAINS = new Set(["example.com","test.com","sample.org","demo.net"]);
     if (CATCHALL_DOMAINS.has(domainPart)) {
       steps.push(step(7,"Catch-all Domain Check","warn","Domain appears to be catch-all — accepts any username"));
@@ -537,41 +580,29 @@ const RISK_ENGINE = {
       steps.push(step(7,"Catch-all Domain Check","pass","No catch-all configuration detected"));
     }
 
-    // ── HEURISTIC SCORING ──────────────────────────────────────────────────
     const indicators = [];
-
     const kws = DB.suspiciousKeywords.email.filter(k=>localPart.includes(k));
     if (kws.length) { indicators.push(`Suspicious keyword${kws.length>1?"s":""}: ${kws.slice(0,3).join(", ")}`); riskWeights.push(Math.min(kws.length*15,50)); }
-
     const digits=(localPart.match(/\d/g)||[]).length;
     if (digits>6){ indicators.push(`Excessive digits (${digits})`); riskWeights.push(18); }
     else if (digits>4){ indicators.push(`High digit count (${digits})`); riskWeights.push(8); }
-
     const entropy=calcEntropy(localPart);
     if (entropy>4.0){ indicators.push(`Very high randomness (entropy: ${entropy.toFixed(2)})`); riskWeights.push(25); }
     else if (entropy>3.5){ indicators.push(`High entropy (${entropy.toFixed(2)})`); riskWeights.push(12); }
-
     if (/(.)\1{2,}/.test(localPart)){ indicators.push("Repeated character pattern"); riskWeights.push(12); }
     if (/(\d{2,})\1/.test(localPart)){ indicators.push("Repeated numeric sequence"); riskWeights.push(14); }
-
     const digitRatio=digits/(localPart.length||1);
     if (digitRatio>0.45&&localPart.length>5){ indicators.push(`Unusual digit ratio (${Math.round(digitRatio*100)}%)`); riskWeights.push(16); }
-
     const typosquats=["g00gle","gmai1","yahooo","hotmai1","outl00k","microsft","amaz0n","paypa1"];
     if (typosquats.some(t=>domainPart.includes(t))){ indicators.push("Typosquatted domain detected"); riskWeights.push(55); }
-
     const domTld="."+tld;
     if (DB.suspiciousTLDs.has(domTld)){ indicators.push(`Suspicious TLD (${domTld})`); riskWeights.push(20); }
-
     const cr=DB.communityReports[email];
     if (cr){ indicators.push(`Community reported ${cr.reports}x: ${cr.category}`); riskWeights.push(Math.min(cr.reports*3,40)); }
-
     if (localPart.length>30){ indicators.push("Abnormally long username"); riskWeights.push(10); }
 
     const rawScore = Math.min(Math.max(riskWeights.reduce((a,b)=>a+b,0),0),100);
     const level = rawScore>=75?"critical":rawScore>=50?"high":rawScore>=25?"medium":"low";
-
-    // confidence: how certain we are
     const confidence = emailStatus==="invalid" ? Math.min(85+riskWeights.length*2,99)
       : emailStatus==="unable" ? Math.floor(35+Math.random()*25)
       : Math.max(88-rawScore,55);
@@ -585,22 +616,19 @@ const RISK_ENGINE = {
         : rawScore>=75 ? "Do NOT interact. Strong phishing/scam signals. Block and report."
         : rawScore>=50 ? "Suspicious. Avoid clicking links or sharing personal data."
         : rawScore>=25 ? "Some anomalies found. Verify sender independently before responding."
-        : "Email appears legitimate. Always verify sender before sharing sensitive information."
+        : "Email appears legitimate. Always verify sender before sharing sensitive information.",
     };
   },
 
   email(raw) {
-    // sync wrapper kept for compatibility — instantly delegates
     return { score:0, level:"low", indicators:[], recommendation:"" };
   },
 
   sms(raw) {
     const text = raw.trim().toLowerCase();
     const indicators = [], weights = [];
-
     const kws = DB.suspiciousKeywords.sms.filter(k=>text.includes(k));
     if (kws.length) { indicators.push(`High-risk keywords: ${kws.slice(0,5).join(", ")}`); weights.push(kws.length*12); }
-
     if (/https?:\/\/[^\s]+/i.test(text)) { indicators.push("Contains URL — inspect before clicking"); weights.push(20); }
     if (/bit\.ly|tinyurl|t\.co|short\./i.test(text)) { indicators.push("Shortened URL detected"); weights.push(25); }
     if (/\d{4,6}.*otp|otp.*\d{4,6}/i.test(text)) { indicators.push("Requests OTP — banks never ask via SMS"); weights.push(55); }
@@ -609,50 +637,44 @@ const RISK_ENGINE = {
     if (/call now|reply now|act now|immediately|expire/i.test(text)) { indicators.push("Artificial urgency tactics"); weights.push(25); }
     if (/account.*block|suspend|deactivat/i.test(text)) { indicators.push("Threat-based manipulation pattern"); weights.push(30); }
     if (/click here|tap here|download now/i.test(text)) { indicators.push("Directive click action — common in phishing"); weights.push(22); }
-
     const score = Math.min(weights.reduce((a,b)=>a+b,0),100);
-    return { score, level: score>=75?"critical":score>=50?"high":score>=25?"medium":"low",
-      indicators: indicators.length?indicators:["No scam patterns detected in this message"],
+    return {
+      score, level: score>=75?"critical":score>=50?"high":score>=25?"medium":"low",
+      indicators: indicators.length ? indicators : ["No scam patterns detected in this message"],
       recommendation: score>=75?"This is almost certainly a scam. Do not call, click, or reply. Block the sender."
         :score>=50?"Very suspicious. Do not click any links. Contact your bank/service directly."
         :score>=25?"Some red flags. Verify the sender through official channels."
-        :"Message appears benign. Always double-check before clicking unknown links."
+        :"Message appears benign. Always double-check before clicking unknown links.",
     };
   },
 
   domain(raw) {
     const domain = raw.trim().toLowerCase().replace(/^https?:\/\//,"").split("/")[0];
     const indicators = [], weights = [];
-
     if (DB.domainBlacklist.has(domain)) { indicators.push("🚨 Domain in threat intelligence blacklist"); weights.push(90); }
-
     const tld = "."+domain.split(".").pop();
     if (DB.suspiciousTLDs.has(tld)) { indicators.push(`Suspicious TLD (${tld})`); weights.push(22); }
     if (DB.trustedTLDs.has("."+domain.split(".").slice(-2).join("."))) weights.push(-20);
-
     const kws = DB.suspiciousKeywords.domain.filter(k=>domain.includes(k));
     if (kws.length) { indicators.push(`Suspicious keywords in domain: ${kws.join(", ")}`); weights.push(kws.length*16); }
-
     const entropy = calcEntropy(domain.split(".")[0]);
     if (entropy > 3.6) { indicators.push(`High domain randomness (entropy: ${entropy.toFixed(2)})`); weights.push(22); }
-
     if (domain.split(".")[0].length > 20) { indicators.push("Unusually long domain name"); weights.push(16); }
     if ((domain.match(/\d/g)||[]).length > 3) { indicators.push("Excessive digits in domain"); weights.push(18); }
     if ((domain.match(/-/g)||[]).length > 2) { indicators.push("Multiple hyphens — common in phishing domains"); weights.push(20); }
-
     const simDomains = ["paypal","amazon","flipkart","sbi","hdfc","icici","google","microsoft"];
     const hit = simDomains.find(s=>domain.includes(s)&&!domain.endsWith(`.${s}.com`)&&!domain.endsWith(`${s}.com`));
     if (hit) { indicators.push(`Mimics trusted brand: ${hit}`); weights.push(40); }
-
     const score = Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
-    return { score, level: score>=75?"critical":score>=50?"high":score>=25?"medium":"low",
-      indicators: indicators.length?indicators:["Domain appears legitimate"],
+    return {
+      score, level: score>=75?"critical":score>=50?"high":score>=25?"medium":"low",
+      indicators: indicators.length ? indicators : ["Domain appears legitimate"],
       recommendation: score>=75?"Do not visit. This domain shows strong malicious indicators."
         :score>=50?"Suspicious domain. Access official sites by typing them manually."
         :score>=25?"Proceed carefully. Verify this is the official website."
-        :"Domain appears low-risk. Always verify SSL and domain authenticity."
+        :"Domain appears low-risk. Always verify SSL and domain authenticity.",
     };
-  }
+  },
 };
 
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
@@ -669,13 +691,15 @@ function Shield({ size=40 }) {
 }
 
 function RiskGauge({ score }) {
-  const levels = [{min:0,max:25,color:C.success,label:"Low",emoji:"🟢"},
-    {min:25,max:50,color:C.warning,label:"Medium",emoji:"🟡"},
-    {min:50,max:75,color:"#FF7A00",label:"High",emoji:"🟠"},
-    {min:75,max:101,color:C.danger,label:"Critical",emoji:"🔴"}];
+  const levels = [
+    {min:0,  max:25,  color:C.success, label:"Low",      emoji:"🟢"},
+    {min:25, max:50,  color:C.warning, label:"Medium",   emoji:"🟡"},
+    {min:50, max:75,  color:"#FF7A00", label:"High",     emoji:"🟠"},
+    {min:75, max:101, color:C.danger,  label:"Critical", emoji:"🔴"},
+  ];
   const lvl = levels.find(l=>score>=l.min&&score<l.max)||levels[3];
   const r=52, cx=70, cy=70, circ=2*Math.PI*r;
-  const arc = (score/100)*circ*0.75;
+  const arc=(score/100)*circ*0.75;
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
       <svg width="140" height="100" viewBox="0 0 140 100">
@@ -709,21 +733,65 @@ function IndicatorTag({ text }) {
 }
 
 function ScanBadge({ level }) {
-  const map = { low:{c:C.success,bg:"rgba(0,200,83,0.12)",l:"Low Risk"},
-    medium:{c:C.warning,bg:"rgba(255,193,7,0.12)",l:"Medium Risk"},
-    high:{c:"#FF7A00",bg:"rgba(255,122,0,0.12)",l:"High Risk"},
-    critical:{c:C.danger,bg:"rgba(255,77,79,0.15)",l:"Critical Risk"} };
+  const map = {
+    low:      {c:C.success,  bg:"rgba(0,200,83,0.12)",   l:"Low Risk"},
+    medium:   {c:C.warning,  bg:"rgba(255,193,7,0.12)",  l:"Medium Risk"},
+    high:     {c:"#FF7A00",  bg:"rgba(255,122,0,0.12)",  l:"High Risk"},
+    critical: {c:C.danger,   bg:"rgba(255,77,79,0.15)",  l:"Critical Risk"},
+  };
   const m = map[level]||map.low;
-  return <span style={{padding:"4px 14px",borderRadius:20,fontSize:12,fontWeight:700,background:m.bg,color:m.c,border:`1px solid ${m.c}40`}}>{m.l}</span>;
+  return (
+    <span style={{padding:"4px 14px",borderRadius:20,fontSize:12,fontWeight:700,
+      background:m.bg,color:m.c,border:`1px solid ${m.c}40`}}>
+      {m.l}
+    </span>
+  );
+}
+
+// ── NEW: Google Safe Browsing Badge UI ────────────────────────────────────────
+function GSBBadge({ gsbBadge }) {
+  if (!gsbBadge) return null;
+
+  if (gsbBadge === "danger") return (
+    <div style={{marginTop:10,padding:"12px 14px",borderRadius:10,
+      background:"rgba(255,77,79,0.12)",border:"2px solid rgba(255,77,79,0.5)",
+      display:"flex",flexDirection:"column",gap:4}}>
+      <div style={{fontWeight:700,color:C.danger,fontSize:13}}>
+        🚨 Google Safe Browsing has flagged this URL as dangerous!
+      </div>
+      <div style={{fontSize:11,color:C.muted}}>🛡️ Powered by Google Safe Browsing</div>
+    </div>
+  );
+
+  if (gsbBadge === "safe") return (
+    <div style={{marginTop:10,padding:"10px 14px",borderRadius:10,
+      background:"rgba(0,200,83,0.08)",border:"1px solid rgba(0,200,83,0.3)",
+      display:"flex",flexDirection:"column",gap:4}}>
+      <div style={{fontWeight:600,color:C.success,fontSize:13}}>
+        ✅ Google Safe Browsing: No threats detected
+      </div>
+      <div style={{fontSize:11,color:C.muted}}>🛡️ Powered by Google Safe Browsing</div>
+    </div>
+  );
+
+  // unavailable
+  return (
+    <div style={{marginTop:10,padding:"8px 14px",borderRadius:10,
+      background:"rgba(255,193,7,0.07)",border:"1px solid rgba(255,193,7,0.25)",
+      display:"flex",alignItems:"center",gap:6}}>
+      <span style={{fontSize:13,color:C.warning}}>⚠️ Google Safe Browsing: Unavailable</span>
+      <span style={{fontSize:11,color:C.muted}}>— local engine only</span>
+    </div>
+  );
 }
 
 const SCAN_TYPES = [
-  { id:"upi",   label:"UPI ID",   icon:"💳", ph:"merchant@paytm" },
-  { id:"url",   label:"URL",      icon:"🔗", ph:"https://example.com" },
-  { id:"phone", label:"Phone",    icon:"📞", ph:"+91 98765 43210" },
-  { id:"email", label:"Email",    icon:"📧", ph:"user@domain.com" },
-  { id:"sms",   label:"SMS/Text", icon:"💬", ph:"Paste suspicious message…", big:true },
-  { id:"domain",label:"Domain",   icon:"🌐", ph:"suspicious-site.xyz" },
+  { id:"upi",    label:"UPI ID",   icon:"💳", ph:"merchant@paytm" },
+  { id:"url",    label:"URL",      icon:"🔗", ph:"https://example.com" },
+  { id:"phone",  label:"Phone",    icon:"📞", ph:"+91 98765 43210" },
+  { id:"email",  label:"Email",    icon:"📧", ph:"user@domain.com" },
+  { id:"sms",    label:"SMS/Text", icon:"💬", ph:"Paste suspicious message…", big:true },
+  { id:"domain", label:"Domain",   icon:"🌐", ph:"suspicious-site.xyz" },
 ];
 
 // ─── PAGES ────────────────────────────────────────────────────────────────────
@@ -748,14 +816,14 @@ function HomePage({ setPage }) {
     {val:counts[3]+"+",label:"Intel Sources"},
   ];
   const tools=[
-    {icon:"💳",t:"UPI Fraud Guard",d:"Multi-heuristic UPI risk scoring with entropy, keyword & blacklist analysis"},
-    {icon:"🔗",t:"URL Analyzer",d:"Deep phishing, typosquatting, redirect chain & TLD reputation analysis"},
-    {icon:"📞",t:"Phone Checker",d:"Spam database, virtual number detection & community reports"},
-    {icon:"📧",t:"Email Verifier",d:"Disposable provider, spoofed domain & phishing indicator checks"},
-    {icon:"💬",t:"SMS Scam Detector",d:"AI-powered message classification with pattern & keyword scoring"},
-    {icon:"🌐",t:"Domain Intel",d:"Threat reputation, brand impersonation & entropy-based risk scoring"},
-    {icon:"🤖",t:"AI Assistant",d:"Ask cybersecurity questions in plain language"},
-    {icon:"🎓",t:"Learn & Quiz",d:"Interactive lessons and quizzes to sharpen your cyber awareness"},
+    {icon:"💳",t:"UPI Fraud Guard",     d:"Multi-heuristic UPI risk scoring with entropy, keyword & blacklist analysis"},
+    {icon:"🔗",t:"URL Analyzer",        d:"Deep phishing, typosquatting, redirect chain & TLD reputation analysis"},
+    {icon:"📞",t:"Phone Checker",       d:"Spam database, virtual number detection & community reports"},
+    {icon:"📧",t:"Email Verifier",      d:"Disposable provider, spoofed domain & phishing indicator checks"},
+    {icon:"💬",t:"SMS Scam Detector",   d:"AI-powered message classification with pattern & keyword scoring"},
+    {icon:"🌐",t:"Domain Intel",        d:"Threat reputation, brand impersonation & entropy-based risk scoring"},
+    {icon:"🤖",t:"AI Assistant",        d:"Ask cybersecurity questions in plain language"},
+    {icon:"🎓",t:"Learn & Quiz",        d:"Interactive lessons and quizzes to sharpen your cyber awareness"},
   ];
 
   return (
@@ -816,36 +884,47 @@ function ScannerPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const cur = SCAN_TYPES.find(t=>t.id===tab);
 
-  function runScan() {
+  // ── CHANGED: runScan now awaits async url() ───────────────────────────────
+  async function runScan() {
     if (!input.trim()) return;
     setLoading(true); setResult(null); setAiNote("");
-    setTimeout(async () => {
-      let r;
-      if (tab === "email") {
-        r = await RISK_ENGINE.emailFull(input);
-      } else {
-        r = RISK_ENGINE[tab] ? RISK_ENGINE[tab](input) : { score:0,level:"low",indicators:["Scanner not implemented yet"],recommendation:"" };
-      }
-      setResult(r);
-      setLoading(false);
-      // Fetch AI explanation in background
-      if (r.score > 0) {
-        setAiLoading(true);
-        try {
-          const prompt = `You are SentinelX, a cybersecurity AI. A ${tab} was analyzed: "${input.trim()}"
+
+    let r;
+    if (tab === "email") {
+      r = await RISK_ENGINE.emailFull(input);
+    } else if (tab === "url") {
+      r = await RISK_ENGINE.url(input);   // ← async now
+    } else {
+      r = RISK_ENGINE[tab]
+        ? RISK_ENGINE[tab](input)
+        : { score:0, level:"low", indicators:["Scanner not implemented yet"], recommendation:"" };
+    }
+
+    setResult(r);
+    setLoading(false);
+
+    if (r.score > 0) {
+      setAiLoading(true);
+      try {
+        const prompt = `You are SentinelX, a cybersecurity AI. A ${tab} was analyzed: "${input.trim()}"
 Risk score: ${r.score}/100 (${r.level})
 Detected indicators: ${r.indicators.join("; ")}
 In 2-3 sentences, give a plain-language explanation of WHY this is risky and what the user should do. Be direct, no fluff.`;
-          const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:200,messages:[{role:"user",content:prompt}]})});
-          const data = await res.json();
-          setAiNote(data.content?.find(c=>c.type==="text")?.text||"");
-        } catch { setAiNote(""); }
-        setAiLoading(false);
-      }
-    }, 900);
+        const res = await fetch("https://api.anthropic.com/v1/messages",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:200,messages:[{role:"user",content:prompt}]})
+        });
+        const data = await res.json();
+        setAiNote(data.content?.find(c=>c.type==="text")?.text||"");
+      } catch { setAiNote(""); }
+      setAiLoading(false);
+    }
   }
 
-  const riskC = result ? (result.level==="critical"?C.danger:result.level==="high"?"#FF7A00":result.level==="medium"?C.warning:C.success) : C.cyan;
+  const riskC = result
+    ? (result.level==="critical"?C.danger:result.level==="high"?"#FF7A00":result.level==="medium"?C.warning:C.success)
+    : C.cyan;
 
   return (
     <div className="fu" style={{padding:"22px 18px"}}>
@@ -879,16 +958,24 @@ In 2-3 sentences, give a plain-language explanation of WHY this is risky and wha
         )}
         <button className="btn-prime" onClick={runScan} disabled={loading||!input.trim()}
           style={{marginTop:11,padding:"11px 26px",fontSize:13}}>
-          {loading?"⏳ Analyzing...":"🔬 Run Analysis"}
+          {loading
+            ? (tab==="url" ? "⏳ Checking Safe Browsing…" : "⏳ Analyzing…")
+            : "🔬 Run Analysis"}
         </button>
       </div>
 
       {loading && (
         <div className="glass" style={{padding:28,textAlign:"center"}}>
-          <div style={{width:36,height:36,border:"3px solid rgba(0,212,255,0.15)",borderTop:`3px solid ${C.cyan}`,borderRadius:"50%",animation:"spin 0.9s linear infinite",margin:"0 auto 14px"}}/>
-          <p style={{color:C.cyan,fontSize:13}}>Running hybrid analysis engine…</p>
+          <div style={{width:36,height:36,border:"3px solid rgba(0,212,255,0.15)",borderTop:`3px solid ${C.cyan}`,
+            borderRadius:"50%",animation:"spin 0.9s linear infinite",margin:"0 auto 14px"}}/>
+          <p style={{color:C.cyan,fontSize:13}}>
+            {tab==="url" ? "Running heuristics + Google Safe Browsing…" : "Running hybrid analysis engine…"}
+          </p>
           <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap",marginTop:10}}>
-            {["Entropy check","Blacklist lookup","Keyword scan","Pattern match","Community intel"].map(s=>(
+            {(tab==="url"
+              ? ["Entropy check","Blacklist lookup","Keyword scan","🛡️ Google Safe Browsing","Pattern match"]
+              : ["Entropy check","Blacklist lookup","Keyword scan","Pattern match","Community intel"]
+            ).map(s=>(
               <span key={s} style={{fontSize:10,color:C.muted,background:"rgba(255,255,255,0.04)",padding:"3px 9px",borderRadius:20}}>{s}</span>
             ))}
           </div>
@@ -911,16 +998,27 @@ In 2-3 sentences, give a plain-language explanation of WHY this is risky and wha
                     </span>
                   )}
                 </div>
-                <div className="mono" style={{fontSize:11,color:C.muted,marginBottom:6}}>Risk Score: <span style={{color:riskC,fontWeight:600}}>{result.score}/100</span></div>
-                <div style={{fontSize:11,color:C.muted}}>Analyzed: <span style={{color:C.text}}>{input.trim().slice(0,40)}{input.length>40?"…":""}</span></div>
+                <div className="mono" style={{fontSize:11,color:C.muted,marginBottom:6}}>
+                  Risk Score: <span style={{color:riskC,fontWeight:600}}>{result.score}/100</span>
+                </div>
+                <div style={{fontSize:11,color:C.muted}}>
+                  Analyzed: <span style={{color:C.text}}>{input.trim().slice(0,40)}{input.length>40?"…":""}</span>
+                </div>
               </div>
             </div>
+
+            {/* ── NEW: GSB badge inside result card, below gauge ── */}
+            {tab==="url" && result.gsbBadge && (
+              <GSBBadge gsbBadge={result.gsbBadge}/>
+            )}
           </div>
 
           <div className="glass" style={{padding:18,marginBottom:12}}>
             <div style={{fontSize:12,fontWeight:600,color:C.cyan,marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
               ⚡ Detected Indicators
-              <span style={{background:"rgba(0,212,255,0.1)",color:C.cyan,fontSize:10,padding:"2px 8px",borderRadius:20}}>{result.indicators.length} found</span>
+              <span style={{background:"rgba(0,212,255,0.1)",color:C.cyan,fontSize:10,padding:"2px 8px",borderRadius:20}}>
+                {result.indicators.length} found
+              </span>
             </div>
             {result.indicators.map((ind,i)=><IndicatorTag key={i} text={ind}/>)}
           </div>
@@ -940,7 +1038,8 @@ In 2-3 sentences, give a plain-language explanation of WHY this is risky and wha
             </div>
           )}
 
-          <div style={{marginTop:14,padding:"12px 16px",borderRadius:10,background:"rgba(255,193,7,0.06)",border:"1px solid rgba(255,193,7,0.2)",fontSize:12,color:"#C9A227"}}>
+          <div style={{marginTop:14,padding:"12px 16px",borderRadius:10,background:"rgba(255,193,7,0.06)",
+            border:"1px solid rgba(255,193,7,0.2)",fontSize:12,color:"#C9A227"}}>
             ⚠️ This is a risk analysis based on heuristics and simulated threat intelligence. Always verify independently before making payments or sharing personal data.
           </div>
         </div>
@@ -950,8 +1049,9 @@ In 2-3 sentences, give a plain-language explanation of WHY this is risky and wha
 }
 
 function AssistantPage() {
-  const [msgs, setMsgs] = useState([{ role:"assistant", text:"👋 Hello! I'm SentinelX AI. Ask me anything about online safety — phishing, UPI scams, suspicious messages, how to stay secure, or paste something you want me to help assess." }]);
-  const [inp, setInp] = useState(""); const [loading, setLoading] = useState(false);
+  const [msgs, setMsgs] = useState([{role:"assistant",text:"👋 Hello! I'm SentinelX AI. Ask me anything about online safety — phishing, UPI scams, suspicious messages, how to stay secure, or paste something you want me to help assess."}]);
+  const [inp, setInp] = useState("");
+  const [loading, setLoading] = useState(false);
   const endRef = useRef(null);
   useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
 
@@ -962,7 +1062,15 @@ function AssistantPage() {
     setInp(""); setMsgs(m=>[...m,{role:"user",text:t}]); setLoading(true);
     try {
       const history = [...msgs.slice(1),{role:"user",text:t}].map(m=>({role:m.role==="assistant"?"assistant":"user",content:m.text}));
-      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:300,system:"You are SentinelX AI, a friendly cybersecurity assistant. Help users identify scams, phishing, UPI fraud, fake messages and stay safe online. Be concise (under 120 words), direct, and practical. Use plain language. When the user shares a suspicious message or ID, give a quick risk read.",messages:history})});
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-6",max_tokens:300,
+          system:"You are SentinelX AI, a friendly cybersecurity assistant. Help users identify scams, phishing, UPI fraud, fake messages and stay safe online. Be concise (under 120 words), direct, and practical. Use plain language. When the user shares a suspicious message or ID, give a quick risk read.",
+          messages:history,
+        }),
+      });
       const data = await res.json();
       setMsgs(m=>[...m,{role:"assistant",text:data.content?.find(c=>c.type==="text")?.text||"Error. Try again."}]);
     } catch { setMsgs(m=>[...m,{role:"assistant",text:"Connection error. Please retry."}]); }
@@ -994,14 +1102,17 @@ function AssistantPage() {
         )}
         <div ref={endRef}/>
       </div>
-      {msgs.length<=2&&(
+      {msgs.length<=2 && (
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
           {chips.map(c=><button key={c} className="btn-ghost" style={{fontSize:11,padding:"6px 11px"}} onClick={()=>send(c)}>{c}</button>)}
         </div>
       )}
       <div style={{display:"flex",gap:8}}>
-        <input className="ifield" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Ask about any security concern…" onKeyDown={e=>e.key==="Enter"&&send()} style={{flex:1,padding:"11px 14px",fontSize:13}}/>
-        <button className="btn-prime" onClick={()=>send()} disabled={!inp.trim()||loading} style={{padding:"11px 18px",fontSize:13,opacity:(!inp.trim()||loading)?0.4:1}}>Send</button>
+        <input className="ifield" value={inp} onChange={e=>setInp(e.target.value)}
+          placeholder="Ask about any security concern…" onKeyDown={e=>e.key==="Enter"&&send()}
+          style={{flex:1,padding:"11px 14px",fontSize:13}}/>
+        <button className="btn-prime" onClick={()=>send()} disabled={!inp.trim()||loading}
+          style={{padding:"11px 18px",fontSize:13,opacity:(!inp.trim()||loading)?0.4:1}}>Send</button>
       </div>
     </div>
   );
@@ -1010,20 +1121,24 @@ function AssistantPage() {
 function DashboardPage() {
   const [counts, setCounts] = useState([0,0,0]);
   useEffect(()=>{
-    const dur=1200,start=Date.now(),targets=[2471893,153204,2318689];
-    const id=setInterval(()=>{const p=Math.min((Date.now()-start)/dur,1),e=1-Math.pow(1-p,3);setCounts(targets.map(t=>Math.floor(t*e)));if(p>=1)clearInterval(id);},16);
+    const dur=1200, start=Date.now(), targets=[2471893,153204,2318689];
+    const id=setInterval(()=>{
+      const p=Math.min((Date.now()-start)/dur,1), e=1-Math.pow(1-p,3);
+      setCounts(targets.map(t=>Math.floor(t*e)));
+      if(p>=1) clearInterval(id);
+    },16);
     return()=>clearInterval(id);
   },[]);
 
   const feed = [
-    {type:"UPI",val:"kyc@sbihelp.net",score:92,level:"critical",time:"1m ago"},
-    {type:"URL",val:"paypal-secure-login.xyz",score:88,level:"critical",time:"4m ago"},
-    {type:"Phone",val:"+91 9876540001",score:55,level:"high",time:"9m ago"},
-    {type:"Email",val:"support@amaz0n.in",score:84,level:"critical",time:"15m ago"},
-    {type:"SMS",val:"You have won ₹5,00,000!…",score:79,level:"critical",time:"22m ago"},
-    {type:"Domain",val:"hdfc-kyc-verify.in",score:91,level:"critical",time:"30m ago"},
-    {type:"URL",val:"github.com/anthropics",score:4,level:"low",time:"38m ago"},
-    {type:"UPI",val:"zomato@icici",score:3,level:"low",time:"52m ago"},
+    {type:"UPI",   val:"kyc@sbihelp.net",          score:92, level:"critical", time:"1m ago"},
+    {type:"URL",   val:"paypal-secure-login.xyz",   score:88, level:"critical", time:"4m ago"},
+    {type:"Phone", val:"+91 9876540001",             score:55, level:"high",     time:"9m ago"},
+    {type:"Email", val:"support@amaz0n.in",          score:84, level:"critical", time:"15m ago"},
+    {type:"SMS",   val:"You have won ₹5,00,000!…",  score:79, level:"critical", time:"22m ago"},
+    {type:"Domain",val:"hdfc-kyc-verify.in",         score:91, level:"critical", time:"30m ago"},
+    {type:"URL",   val:"github.com/anthropics",      score:4,  level:"low",      time:"38m ago"},
+    {type:"UPI",   val:"zomato@icici",               score:3,  level:"low",      time:"52m ago"},
   ];
   const bars=[62,45,78,55,88,41,66];
   const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -1050,7 +1165,7 @@ function DashboardPage() {
         <div style={{display:"flex",alignItems:"flex-end",gap:6,height:90}}>
           {bars.map((v,i)=>(
             <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-              <div style={{width:"100%",height:`${v}%`,background:`linear-gradient(180deg,${C.cyan},${C.blue})`,borderRadius:"4px 4px 0 0",opacity:.75,transition:"height 1s ease"}}/>
+              <div style={{width:"100%",height:`${v}%`,background:`linear-gradient(180deg,${C.cyan},${C.blue})`,borderRadius:"4px 4px 0 0",opacity:.75}}/>
               <div style={{fontSize:9,color:C.muted}}>{days[i]}</div>
             </div>
           ))}
@@ -1059,7 +1174,8 @@ function DashboardPage() {
       <div className="glass" style={{padding:18}}>
         <div style={{fontSize:12,fontWeight:600,color:C.cyan,marginBottom:12}}>🕐 Recent Community Scans</div>
         {feed.map((s,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<feed.length-1?"1px solid rgba(255,255,255,0.04)":"none"}}>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",
+            borderBottom:i<feed.length-1?"1px solid rgba(255,255,255,0.04)":"none"}}>
             <span style={{fontSize:10,background:"rgba(0,212,255,0.08)",color:C.cyan,padding:"2px 7px",borderRadius:20,fontWeight:600,flexShrink:0}}>{s.type}</span>
             <span style={{flex:1,fontSize:12,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.val}</span>
             <span className="mono" style={{fontSize:11,fontWeight:700,color:lc[s.level],flexShrink:0}}>{s.score}</span>
@@ -1089,12 +1205,12 @@ function LearnPage() {
   function nextQ() { setAnswered(null); setQIdx((qIdx+1)%qs.length); }
 
   const topics = [
-    {icon:"🎣",t:"Phishing",d:"Fake emails, sites & messages",c:C.danger},
-    {icon:"💳",t:"UPI Fraud",d:"Fake payment & KYC scams",c:C.warning},
-    {icon:"🔐",t:"Password Safety",d:"Strong passwords & 2FA",c:C.blue},
-    {icon:"📱",t:"Social Engineering",d:"Psychological manipulation",c:C.violet},
-    {icon:"🌐",t:"Safe Browsing",d:"Spotting malicious sites",c:C.success},
-    {icon:"🔒",t:"Digital Privacy",d:"Protecting personal data",c:C.cyan},
+    {icon:"🎣",t:"Phishing",          d:"Fake emails, sites & messages",    c:C.danger},
+    {icon:"💳",t:"UPI Fraud",          d:"Fake payment & KYC scams",         c:C.warning},
+    {icon:"🔐",t:"Password Safety",    d:"Strong passwords & 2FA",           c:C.blue},
+    {icon:"📱",t:"Social Engineering", d:"Psychological manipulation",       c:C.violet},
+    {icon:"🌐",t:"Safe Browsing",      d:"Spotting malicious sites",         c:C.success},
+    {icon:"🔒",t:"Digital Privacy",    d:"Protecting personal data",         c:C.cyan},
   ];
 
   return (
@@ -1120,7 +1236,8 @@ function LearnPage() {
         <p style={{fontSize:14,fontWeight:500,marginBottom:16,lineHeight:1.6}}>{q.q}</p>
         {q.opts.map((o,i)=>(
           <button key={i} onClick={()=>setAnswered(i)} disabled={answered!==null}
-            style={{display:"block",width:"100%",textAlign:"left",padding:"11px 14px",marginBottom:7,borderRadius:9,fontSize:13,cursor:answered===null?"pointer":"default",fontFamily:"Inter,sans-serif",
+            style={{display:"block",width:"100%",textAlign:"left",padding:"11px 14px",marginBottom:7,borderRadius:9,
+              fontSize:13,cursor:answered===null?"pointer":"default",fontFamily:"Inter,sans-serif",
               background:answered===null?"rgba(255,255,255,0.04)":i===q.ans?"rgba(0,200,83,0.12)":i===answered?"rgba(255,77,79,0.1)":"rgba(255,255,255,0.03)",
               border:`1px solid ${answered===null?"rgba(255,255,255,0.08)":i===q.ans?C.success:i===answered?C.danger:"rgba(255,255,255,0.05)"}`,
               color:answered===null?C.text:i===q.ans?C.success:i===answered?C.danger:C.muted,transition:"all .2s"}}>
@@ -1132,7 +1249,9 @@ function LearnPage() {
             background:answered===q.ans?"rgba(0,200,83,0.08)":"rgba(255,77,79,0.08)",
             border:`1px solid ${answered===q.ans?C.success:C.danger}`,color:C.text}}>
             {answered===q.ans?"✅ Correct! ":"❌ Not quite — "}{q.explain}
-            <div style={{marginTop:10}}><button className="btn-ghost" style={{fontSize:11,padding:"6px 14px"}} onClick={nextQ}>Next Question →</button></div>
+            <div style={{marginTop:10}}>
+              <button className="btn-ghost" style={{fontSize:11,padding:"6px 14px"}} onClick={nextQ}>Next Question →</button>
+            </div>
           </div>
         )}
       </div>
@@ -1141,7 +1260,13 @@ function LearnPage() {
 }
 
 // ─── APP SHELL ────────────────────────────────────────────────────────────────
-const NAV = [{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",icon:"🤖"},{id:"Dashboard",icon:"📊"},{id:"Learn",icon:"🎓"}];
+const NAV = [
+  {id:"Home",      icon:"🏠"},
+  {id:"Scanner",   icon:"🔍"},
+  {id:"Assistant", icon:"🤖"},
+  {id:"Dashboard", icon:"📊"},
+  {id:"Learn",     icon:"🎓"},
+];
 
 export default function SentinelX() {
   const [page, setPage] = useState("Home");
@@ -1149,11 +1274,14 @@ export default function SentinelX() {
     <>
       <style>{css}</style>
       <div style={{minHeight:"100vh",background:C.bg,maxWidth:760,margin:"0 auto"}}>
-        <header style={{padding:"12px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"rgba(8,14,28,0.96)",backdropFilter:"blur(14px)",zIndex:100}}>
+        <header style={{padding:"12px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",
+          justifyContent:"space-between",position:"sticky",top:0,background:"rgba(8,14,28,0.96)",
+          backdropFilter:"blur(14px)",zIndex:100}}>
           <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setPage("Home")}>
             <Shield size={30}/>
             <div>
-              <div style={{fontWeight:700,fontSize:15,background:`linear-gradient(135deg,${C.cyan},${C.blue})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>SentinelX</div>
+              <div style={{fontWeight:700,fontSize:15,background:`linear-gradient(135deg,${C.cyan},${C.blue})`,
+                WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>SentinelX</div>
               <div style={{fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase"}}>Cyber Shield AI</div>
             </div>
           </div>
@@ -1163,22 +1291,24 @@ export default function SentinelX() {
                 style={{padding:"6px 11px",fontSize:11,color:page===n.id?C.cyan:C.muted,
                   background:page===n.id?"rgba(0,212,255,0.08)":"transparent",
                   borderBottom:page===n.id?`2px solid ${C.cyan}`:"2px solid transparent",borderRadius:0}}>
-                <span style={{marginRight:4}}>{n.icon}</span><span style={{display:"none"}}>{n.id}</span>
+                <span style={{marginRight:4}}>{n.icon}</span>
               </button>
             ))}
           </nav>
         </header>
         <main>
-          {page==="Home"&&<HomePage setPage={setPage}/>}
-          {page==="Scanner"&&<ScannerPage/>}
-          {page==="Assistant"&&<AssistantPage/>}
-          {page==="Dashboard"&&<DashboardPage/>}
-          {page==="Learn"&&<LearnPage/>}
+          {page==="Home"      && <HomePage setPage={setPage}/>}
+          {page==="Scanner"   && <ScannerPage/>}
+          {page==="Assistant" && <AssistantPage/>}
+          {page==="Dashboard" && <DashboardPage/>}
+          {page==="Learn"     && <LearnPage/>}
         </main>
-        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:760,background:"rgba(8,14,28,0.97)",borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>
+        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:760,
+          background:"rgba(8,14,28,0.97)",borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>
           {NAV.map(n=>(
             <button key={n.id} className="tab" onClick={()=>setPage(n.id)}
-              style={{flex:1,padding:"10px 4px 9px",fontSize:9,color:page===n.id?C.cyan:C.muted,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+              style={{flex:1,padding:"10px 4px 9px",fontSize:9,color:page===n.id?C.cyan:C.muted,
+                display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
               <span style={{fontSize:17}}>{n.icon}</span>{n.id}
             </button>
           ))}
