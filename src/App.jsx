@@ -31,8 +31,8 @@ body{font-family:'Inter',sans-serif;background:${C.bg};color:${C.text}}
 .mono{font-family:'JetBrains Mono',monospace}
 `;
 
-// ─── GEMINI API CALL (via Vercel backend) ─────────────────────────────────────
-async function callGemini({ messages, system }) {
+// ─── AI API CALL (via Vercel backend → Groq) ──────────────────────────────────
+async function callAI({ messages, system }) {
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -168,40 +168,169 @@ const RISK_ENGINE = {
     return { score, level:score>=75?"critical":score>=50?"high":score>=25?"medium":"low", indicators:indicators.length?indicators:["No immediate red flags detected"], recommendation:score>=75?"⚠️ Do NOT proceed. This UPI ID matches multiple fraud patterns. Report it to your bank immediately.":score>=50?"Exercise extreme caution. Verify this UPI ID with the recipient over a trusted channel before transferring any money.":score>=25?"Some indicators found. Double-check the recipient's identity before proceeding with any payment.":"No major concerns found. Still verify the recipient independently as a good practice." };
   },
 
+  // ─── UPGRADED URL SCANNER (Option C: Frontend heuristic rules + Google Safe Browsing combined) ───
   async url(raw) {
     const url = raw.trim().toLowerCase();
     const indicators = [], weights = [];
+    let domainAgeFlag = null;
+
     try {
-      const u = new URL(url.startsWith("http")?url:"https://"+url);
+      const u = new URL(url.startsWith("http") ? url : "https://" + url);
       const host = u.hostname;
-      if (DB.domainBlacklist.has(host)) { indicators.push("🚨 Domain found in phishing blacklist"); weights.push(88); }
-      if (DB.suspiciousTLDs.has("."+host.split(".").pop())) { indicators.push(`Suspicious TLD (.${host.split(".").pop()})`); weights.push(20); }
-      const tld="."+host.split(".").slice(-2).join(".");
-      if (DB.trustedTLDs.has(tld)) weights.push(-15);
-      const domainAge=Math.random()*30;
-      if (domainAge<10) { indicators.push("Newly registered domain (simulated intel)"); weights.push(25); }
-      const kws=DB.suspiciousKeywords.url.filter(k=>url.includes(k));
-      if (kws.length) { indicators.push(`Suspicious path keywords: ${kws.join(", ")}`); weights.push(kws.length*15); }
-      const domainParts=host.replace("www.","").split(".");
-      if (domainParts[0].length>22) { indicators.push("Unusually long subdomain/domain"); weights.push(18); }
-      const entropy=calcEntropy(host);
-      if (entropy>3.8) { indicators.push(`High domain randomness (entropy: ${entropy.toFixed(2)})`); weights.push(20); }
-      if (!url.startsWith("https")) { indicators.push("No HTTPS — connection is unencrypted"); weights.push(22); }
-      const shorteners=["bit.ly","t.co","tinyurl.com","goo.gl","ow.ly","short.link","rb.gy"];
-      if (shorteners.some(s=>host.includes(s))) { indicators.push("URL shortener detected — destination unknown"); weights.push(18); }
-      const typos=["paypa1","arnazon","g00gle","faceb00k","microsft","netfl1x","y0utube"];
-      if (typos.some(t=>host.includes(t))) { indicators.push("Typosquatting pattern detected"); weights.push(40); }
-      if ((url.match(/@/g)||[]).length>0) { indicators.push("URL contains @ — credential theft risk"); weights.push(35); }
-    } catch { indicators.push("Invalid URL format"); weights.push(30); }
-    let localScore=Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
-    const gsb=await callGoogleSafeBrowsing(raw.trim());
-    let gsbBadge=null;
-    if (gsb.status==="danger") { localScore=Math.max(localScore,90); gsb.threats.forEach(t=>indicators.push(`🚨 Google Safe Browsing: ${t} detected`)); gsbBadge="danger"; weights.push(90); }
-    else if (gsb.status==="safe") { indicators.push("✅ Google Safe Browsing: No threats detected"); gsbBadge="safe"; }
-    else { indicators.push("⚠️ Google Safe Browsing: Unavailable"); gsbBadge="unavailable"; }
-    const finalScore=gsb.status==="danger"?Math.max(localScore,90):localScore;
-    const level=finalScore>=75?"critical":finalScore>=50?"high":finalScore>=25?"medium":"low";
-    return { score:finalScore, level, gsbBadge, indicators:indicators.length?indicators:["No malicious patterns detected"], recommendation:finalScore>=75?"Do NOT visit this URL. It shows strong indicators of phishing or malware. Delete the message containing it.":finalScore>=50?"Avoid this URL. Verify with the official website directly by typing the address manually.":finalScore>=25?"Proceed with caution. Do not enter passwords or payment details.":"URL appears low-risk. Still avoid entering sensitive data on unfamiliar sites." };
+      const path = u.pathname + u.search;
+
+      // ── Blacklist check ──
+      if (DB.domainBlacklist.has(host)) {
+        indicators.push("🚨 Domain found in phishing blacklist");
+        weights.push(88);
+      }
+
+      // ── IP address in URL ──
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+        indicators.push("🚨 IP address used instead of domain — major red flag");
+        weights.push(75);
+      }
+
+      // ── Suspicious TLD ──
+      const tldPart = "." + host.split(".").pop();
+      if (DB.suspiciousTLDs.has(tldPart)) {
+        indicators.push(`Suspicious TLD (${tldPart}) — commonly used in scam sites`);
+        weights.push(22);
+      }
+
+      // ── Trusted TLD bonus ──
+      const tld2 = "." + host.split(".").slice(-2).join(".");
+      if (DB.trustedTLDs.has(tld2)) weights.push(-20);
+
+      // ── Domain age heuristic (pattern-based, not real WHOIS) ──
+      const suspTLDs = [".xyz", ".win", ".club", ".top", ".tk", ".ml", ".ga", ".cf"];
+      const isSuspTLD = suspTLDs.some(t => host.endsWith(t));
+      const hasNumbers = /\d/.test(host.split(".")[0]);
+      const isLong = host.split(".")[0].length > 15;
+      if (isSuspTLD && (hasNumbers || isLong)) {
+        indicators.push("Likely newly registered domain — high-risk pattern");
+        weights.push(30);
+        domainAgeFlag = "⚠️ Likely New Domain";
+      }
+
+      // ── Subdomain count ──
+      const subdomains = host.split(".").length - 2;
+      if (subdomains >= 3) {
+        indicators.push(`Excessive subdomains (${subdomains}) — common in phishing URLs`);
+        weights.push(subdomains * 10);
+      }
+
+      // ── Suspicious path keywords ──
+      const kws = DB.suspiciousKeywords.url.filter(k => path.includes(k));
+      if (kws.length) {
+        indicators.push(`Suspicious path keywords: ${kws.join(", ")}`);
+        weights.push(kws.length * 15);
+      }
+
+      // ── Long domain ──
+      if (host.replace("www.", "").split(".")[0].length > 22) {
+        indicators.push("Unusually long domain name — spoofing indicator");
+        weights.push(18);
+      }
+
+      // ── High entropy ──
+      const entropy = calcEntropy(host);
+      if (entropy > 3.8) {
+        indicators.push(`High domain randomness (entropy: ${entropy.toFixed(2)}) — auto-generated domain`);
+        weights.push(22);
+      }
+
+      // ── No HTTPS ──
+      if (!url.startsWith("https")) {
+        indicators.push("No HTTPS — data transmitted without encryption");
+        weights.push(25);
+      }
+
+      // ── URL shortener ──
+      const shorteners = ["bit.ly", "t.co", "tinyurl.com", "goo.gl", "ow.ly", "short.link", "rb.gy", "tiny.cc", "is.gd", "cutt.ly"];
+      if (shorteners.some(s => host.includes(s))) {
+        indicators.push("URL shortener detected — real destination is hidden");
+        weights.push(20);
+      }
+
+      // ── Typosquatting ──
+      const brands = [
+        { name: "paypal", variants: ["paypa1", "paypai", "paypa-l"] },
+        { name: "amazon", variants: ["amaz0n", "arnazon", "amazzon"] },
+        { name: "google", variants: ["g00gle", "go0gle", "googIe"] },
+        { name: "facebook", variants: ["faceb00k", "facebok", "faceboook"] },
+        { name: "microsoft", variants: ["microsft", "micros0ft", "mlcrosoft"] },
+        { name: "netflix", variants: ["netfl1x", "netfiix", "netlfix"] },
+        { name: "sbi", variants: ["sb1", "sbl"] },
+        { name: "hdfc", variants: ["hdfcc", "hdtc"] },
+        { name: "icici", variants: ["icicl", "1cici"] },
+        { name: "paytm", variants: ["pay-tm", "paytnn", "paytm-kyc"] },
+      ];
+      const typoHit = brands.find(b =>
+        b.variants.some(v => host.includes(v)) ||
+        (host.includes(b.name) && !host.endsWith(`${b.name}.com`) && !host.endsWith(`${b.name}.in`))
+      );
+      if (typoHit) {
+        indicators.push(`Brand impersonation: mimics "${typoHit.name}" — typosquatting detected`);
+        weights.push(50);
+      }
+
+      // ── @ symbol in URL ──
+      if ((url.match(/@/g) || []).length > 0) {
+        indicators.push("@ symbol in URL — used to hide real destination (credential theft)");
+        weights.push(40);
+      }
+
+      // ── Multiple redirects pattern ──
+      if ((url.match(/https?:\/\//g) || []).length > 1) {
+        indicators.push("Multiple protocol indicators — redirect chain detected");
+        weights.push(35);
+      }
+
+      // ── Excessive special chars ──
+      const specialCount = (url.match(/[%&=?#]/g) || []).length;
+      if (specialCount > 8) {
+        indicators.push(`Excessive special characters (${specialCount}) — obfuscation attempt`);
+        weights.push(20);
+      }
+
+    } catch {
+      indicators.push("Invalid or malformed URL format");
+      weights.push(35);
+    }
+
+    let localScore = Math.min(Math.max(weights.reduce((a, b) => a + b, 0), 0), 100);
+
+    // ── Google Safe Browsing ──
+    const gsb = await callGoogleSafeBrowsing(raw.trim());
+    let gsbBadge = null;
+    if (gsb.status === "danger") {
+      localScore = Math.max(localScore, 90);
+      gsb.threats.forEach(t => indicators.push(`🚨 Google Safe Browsing: ${t} detected`));
+      gsbBadge = "danger";
+    } else if (gsb.status === "safe") {
+      indicators.push("✅ Google Safe Browsing: No threats detected");
+      gsbBadge = "safe";
+    } else {
+      indicators.push("⚠️ Google Safe Browsing: Unavailable");
+      gsbBadge = "unavailable";
+    }
+
+    const finalScore = gsb.status === "danger" ? Math.max(localScore, 90) : localScore;
+    const level = finalScore >= 75 ? "critical" : finalScore >= 50 ? "high" : finalScore >= 25 ? "medium" : "low";
+
+    return {
+      score: finalScore,
+      level,
+      gsbBadge,
+      domainAgeFlag,
+      indicators: indicators.length ? indicators : ["No malicious patterns detected"],
+      recommendation:
+        finalScore >= 75 ? "Do NOT visit this URL. Multiple fraud indicators detected. Delete the message containing this link immediately." :
+        finalScore >= 50 ? "Avoid this URL. Verify the official website by typing it manually in your browser." :
+        finalScore >= 25 ? "Proceed with caution. Do not enter passwords or payment details on this site." :
+        "URL appears low-risk. Still avoid entering sensitive data on unfamiliar sites.",
+    };
   },
 
   phone(raw) {
@@ -381,6 +510,11 @@ function GSBBadge({ gsbBadge }) {
   return <div style={{marginTop:10,padding:"8px 14px",borderRadius:10,background:"rgba(255,193,7,0.07)",border:"1px solid rgba(255,193,7,0.25)",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:13,color:C.warning}}>⚠️ Google Safe Browsing: Unavailable</span><span style={{fontSize:11,color:C.muted}}>— local engine only</span></div>;
 }
 
+function DomainAgeBadge({ flag }) {
+  if (!flag) return null;
+  return <span style={{fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20,background:"rgba(255,193,7,0.1)",border:"1px solid rgba(255,193,7,0.3)",color:C.warning,letterSpacing:.3}}>{flag}</span>;
+}
+
 // ─── SMARTER AI EXPLANATION COMPONENT ────────────────────────────────────────
 function AIThreatExplanation({ explanation, loading }) {
   if (!explanation && !loading) return null;
@@ -389,7 +523,7 @@ function AIThreatExplanation({ explanation, loading }) {
     <div className="glass fu" style={{padding:18,borderColor:"rgba(139,92,246,0.35)",marginBottom:12}}>
       <div style={{fontSize:12,fontWeight:600,color:C.violet,marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
         🤖 AI Threat Analysis
-        {loading && <span style={{animation:"pulse 1s infinite",fontSize:10,color:C.muted}}>Gemini analyzing…</span>}
+        {loading && <span style={{animation:"pulse 1s infinite",fontSize:10,color:C.muted}}>AI analyzing…</span>}
       </div>
       {loading && !explanation && (
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -453,7 +587,7 @@ function HomePage({ setPage }) {
     {icon:"📧",t:"Email Verifier",d:"Disposable provider, spoofed domain & phishing indicator checks"},
     {icon:"💬",t:"SMS Scam Detector",d:"AI-powered message classification with pattern & keyword scoring"},
     {icon:"🌐",t:"Domain Intel",d:"Threat reputation, brand impersonation & entropy-based risk scoring"},
-    {icon:"🤖",t:"AI Assistant",d:"Ask cybersecurity questions — powered by Google Gemini AI"},
+    {icon:"🤖",t:"AI Assistant",d:"Ask cybersecurity questions — powered by AI"},
     {icon:"🎓",t:"Learn & Quiz",d:"Interactive lessons and quizzes to sharpen your cyber awareness"},
   ];
   return (
@@ -467,7 +601,7 @@ function HomePage({ setPage }) {
           <span>Think Before </span>
           <span style={{background:`linear-gradient(135deg,${C.cyan},${C.blue},${C.violet})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>You Click.</span>
         </h1>
-        <p style={{color:C.muted,fontSize:15,maxWidth:480,margin:"0 auto 28px",lineHeight:1.75}}>Smart hybrid risk analyzer — multi-heuristic scoring with entropy analysis, blacklists, community intel & Gemini AI reasoning.</p>
+        <p style={{color:C.muted,fontSize:15,maxWidth:480,margin:"0 auto 28px",lineHeight:1.75}}>Smart hybrid risk analyzer — multi-heuristic scoring with entropy analysis, blacklists, community intel & AI reasoning.</p>
         <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
           <button className="btn-prime" style={{padding:"13px 30px",fontSize:14}} onClick={()=>setPage("Scanner")}>🔍 Analyze Now</button>
           <button className="btn-ghost" style={{padding:"13px 22px",fontSize:14}} onClick={()=>setPage("Assistant")}>🤖 Ask AI</button>
@@ -483,7 +617,7 @@ function HomePage({ setPage }) {
       </div>
       <div style={{padding:"0 20px 60px"}}>
         <h2 style={{textAlign:"center",fontSize:18,fontWeight:600,marginBottom:4}}>Comprehensive Security Toolkit</h2>
-        <p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:20}}>Hybrid rule engine + Gemini AI — built to replace simple keyword checkers</p>
+        <p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:20}}>Hybrid rule engine + AI — built to replace simple keyword checkers</p>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(195px,1fr))",gap:10}}>
           {tools.map(f=>(
             <div key={f.t} className="glass" style={{padding:"16px 14px",cursor:"pointer",transition:"all .2s"}}
@@ -519,7 +653,7 @@ function ScannerPage() {
     else r=RISK_ENGINE[tab]?RISK_ENGINE[tab](input):{score:0,level:"low",indicators:["Scanner not implemented yet"],recommendation:""};
     setResult(r); setLoading(false);
 
-    // ── SMARTER AI EXPLANATION via Gemini backend ─────────────────────────
+    // ── SMARTER AI EXPLANATION via backend (Groq) ─────────────────────────
     if (r.score >= 0) {
       setAiLoading(true);
       const prompt = `You are SentinelX, an expert cybersecurity AI assistant. Analyze this ${tab.toUpperCase()} that was scanned:
@@ -541,7 +675,7 @@ Provide a detailed threat analysis with these sections:
 
 Keep total response under 200 words. Be direct and practical. No fluff.`;
 
-      const explanation = await callGemini({
+      const explanation = await callAI({
         messages: [{ role: "user", content: prompt }],
         system: "You are SentinelX AI, a cybersecurity expert. Give structured, actionable threat analysis. Always use the exact section headers provided. Be concise and specific.",
       });
@@ -556,7 +690,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
     <div className="fu" style={{padding:"22px 18px"}}>
       <div style={{marginBottom:18}}>
         <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>🔍 Smart Risk Analyzer</h2>
-        <p style={{color:C.muted,fontSize:12}}>Hybrid rule engine + Gemini AI — multi-heuristic analysis</p>
+        <p style={{color:C.muted,fontSize:12}}>Hybrid rule engine + AI — multi-heuristic analysis</p>
       </div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
         {SCAN_TYPES.map(t=>(
@@ -603,6 +737,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
                       {result.structuralFlag}
                     </span>
                   )}
+                  {tab==="url" && <DomainAgeBadge flag={result.domainAgeFlag}/>}
                 </div>
                 <div className="mono" style={{fontSize:11,color:C.muted,marginBottom:6}}>
                   Risk Score: <span style={{color:riskC,fontWeight:600}}>{result.score}/100</span>
@@ -632,7 +767,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
           <AIThreatExplanation explanation={aiExplanation} loading={aiLoading}/>
 
           <div style={{marginTop:14,padding:"12px 16px",borderRadius:10,background:"rgba(255,193,7,0.06)",border:"1px solid rgba(255,193,7,0.2)",fontSize:12,color:"#C9A227"}}>
-            ⚠️ Analysis based on heuristics + Gemini AI. Always verify independently before making payments or sharing personal data.
+            ⚠️ Analysis based on heuristics + AI. Always verify independently before making payments or sharing personal data.
           </div>
         </div>
       )}
@@ -642,7 +777,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
 
 // ─── ASSISTANT PAGE — with full conversation memory ───────────────────────────
 function AssistantPage() {
-  const [msgs,setMsgs]=useState([{role:"assistant",text:"👋 Hello! I'm SentinelX AI, powered by Google Gemini. Ask me anything about online safety — phishing, UPI scams, suspicious messages, or paste something you want me to assess. I remember our full conversation!"}]);
+  const [msgs,setMsgs]=useState([{role:"assistant",text:"👋 Hello! I'm SentinelX AI. Ask me anything about online safety — phishing, UPI scams, suspicious messages, or paste something you want me to assess. I remember our full conversation!"}]);
   const [inp,setInp]=useState("");
   const [loading,setLoading]=useState(false);
   const endRef=useRef(null);
@@ -657,16 +792,16 @@ function AssistantPage() {
     setMsgs(m=>[...m,newUserMsg]); 
     setLoading(true);
 
-    // ── FULL CONVERSATION HISTORY sent to Gemini ──────────────────────────
+    // ── FULL CONVERSATION HISTORY sent to backend ─────────────────────────
     const allMsgs=[...msgs,newUserMsg];
     const history=allMsgs.map(m=>({
-      role:m.role==="assistant"?"model":"user",
+      role:m.role==="assistant"?"assistant":"user",
       content:m.text,
     }));
 
-    const reply=await callGemini({
+    const reply=await callAI({
       messages:history,
-      system:"You are SentinelX AI, a friendly and expert cybersecurity assistant powered by Google Gemini. Help users identify scams, phishing, UPI fraud, fake messages and stay safe online. Be concise (under 150 words), direct, and practical. Use plain language. When the user shares a suspicious message or ID, give a quick but detailed risk assessment. Remember the full conversation context and refer back to earlier messages when relevant.",
+      system:"You are SentinelX AI, a friendly and expert cybersecurity assistant. Help users identify scams, phishing, UPI fraud, fake messages and stay safe online. Be concise (under 150 words), direct, and practical. Use plain language. When the user shares a suspicious message or ID, give a quick but detailed risk assessment. Remember the full conversation context and refer back to earlier messages when relevant.",
     });
 
     setMsgs(m=>[...m,{role:"assistant",text:reply}]);
@@ -678,7 +813,7 @@ function AssistantPage() {
       <div style={{marginBottom:14}}>
         <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>🤖 AI Cyber Assistant</h2>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:"rgba(0,200,83,0.1)",color:C.success,border:`1px solid ${C.success}40`,fontWeight:600}}>● Gemini AI Connected</span>
+          <span style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:"rgba(0,200,83,0.1)",color:C.success,border:`1px solid ${C.success}40`,fontWeight:600}}>● AI Connected</span>
           <span style={{fontSize:10,color:C.muted}}>Full conversation memory active</span>
         </div>
       </div>
