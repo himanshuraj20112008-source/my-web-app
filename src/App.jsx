@@ -331,53 +331,141 @@ const RISK_ENGINE = {
   },
 
   async emailFull(raw) {
-    const email=raw.trim().toLowerCase();
-    const [localPart,domainPart]=email.split("@");
-    const step=(id,label,status,detail)=>({id,label,status,detail});
-    const steps=[]; let riskWeights=[]; let emailStatus="verified";
-    const RFC=/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-    const atCount=(email.match(/@/g)||[]).length;
-    let syntaxOk=RFC.test(email)&&atCount===1&&!!localPart&&!!domainPart;
-    if (!syntaxOk) { const why=!email.includes("@")?"Missing @ symbol":atCount>1?"Multiple @ symbols":!localPart?"Missing username":!domainPart||!domainPart.includes(".")?"Invalid or missing domain":"Invalid characters"; steps.push(step(1,"Syntax Validation (RFC 5321/5322)","fail",why)); riskWeights.push(70); emailStatus="invalid"; }
-    else { if(/^\.|\.$|\.\./.test(localPart)){steps.push(step(1,"Syntax Validation","warn","Invalid dot placement"));riskWeights.push(20);}else{steps.push(step(1,"Syntax Validation (RFC 5321/5322)","pass","Email format is RFC-compliant"));} }
-    if (DB.emailWhitelist.has(email)) { steps.push(step(2,"Reputation Database","pass","Found in trusted whitelist")); const score=Math.floor(Math.random()*12)+2; return {score,confidence:96,level:"low",emailStatus:"verified",structuralFlag:"✅ Whitelist Match",steps,indicators:["Whitelisted trusted sender"],recommendation:"This is a verified, trusted email address. Safe to interact with."}; }
-    if (DB.emailBlacklist.has(email)) { steps.push(step(2,"Reputation Database","fail","🚨 Found in scam/phishing blacklist")); const score=95+Math.floor(Math.random()*5); return {score,confidence:99,level:"critical",emailStatus:"invalid",structuralFlag:"🚨 Blacklist Match",steps,indicators:["Known scam/phishing address"],recommendation:"Do NOT interact. This is a confirmed phishing/scam address. Block and report immediately."}; }
-    steps.push(step(2,"Reputation Database","pass","Not found in local blacklist/whitelist"));
-    if (!syntaxOk) return {score:Math.min(riskWeights.reduce((a,b)=>a+b,0),100),confidence:10,level:"critical",emailStatus:"invalid",structuralFlag:"❌ Invalid Syntax",steps,indicators:["RFC syntax validation failed"],recommendation:"This is not a valid email address. Double-check for typos."};
-    const KNOWN_DOMAINS=new Set(["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","protonmail.com","zoho.com","aol.com","live.com","msn.com","rediffmail.com","google.com","microsoft.com","apple.com","amazon.com","github.com","linkedin.com","twitter.com","meta.com","netflix.com","sbi.co.in","hdfcbank.com","icicibank.com","axisbank.com","irctc.co.in","rbi.org.in","zomato.com","swiggy.com","flipkart.com","paytm.com"]);
-    const tld=domainPart.split(".").pop();
-    const VALID_TLDS=new Set(["com","net","org","in","io","co","edu","gov","uk","us","ca","au","de","fr","jp","cn","br","info","biz","me","tv","app","dev","ai","cloud","tech","online","site","store"]);
-    const domainExists=KNOWN_DOMAINS.has(domainPart)?true:VALID_TLDS.has(tld)&&domainPart.length>4?"likely":false;
-    if(domainExists===false){steps.push(step(3,"Domain Existence","fail","Domain does not appear to exist"));riskWeights.push(60);emailStatus="invalid";}
-    else if(domainExists===true){steps.push(step(3,"Domain Existence","pass","Domain verified in known-domains registry"));}
-    else{steps.push(step(3,"Domain Existence","warn","Domain structure valid but not in known registry"));riskWeights.push(10);if(emailStatus==="verified")emailStatus="unable";}
-    const MX_KNOWN=new Set(["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","protonmail.com","zoho.com","aol.com","live.com","rediffmail.com","sbi.co.in","hdfcbank.com","google.com","microsoft.com","apple.com","amazon.com","github.com","linkedin.com"]);
-    const hasMX=MX_KNOWN.has(domainPart)?true:domainExists===true?"likely":domainExists===false?false:"unknown";
-    if(hasMX===false){steps.push(step(4,"MX Record Check","fail","No MX records — domain cannot receive email"));riskWeights.push(55);emailStatus="invalid";}
-    else if(hasMX===true){steps.push(step(4,"MX Record Check","pass","MX records confirmed"));}
-    else{steps.push(step(4,"MX Record Check","warn","Unable to fully verify MX records"));riskWeights.push(8);if(emailStatus==="verified")emailStatus="unable";}
-    if(DB.disposableEmailProviders.has(domainPart)){steps.push(step(5,"Disposable Email Detection","fail","Known temporary/disposable email provider"));riskWeights.push(50);emailStatus="invalid";}
-    else{steps.push(step(5,"Disposable Email Detection","pass","Not a known disposable email provider"));}
-    if(domainExists===false||hasMX===false){steps.push(step(6,"SMTP Mailbox Verification","skip","Skipped — domain/MX invalid"));}
-    else if(["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com"].includes(domainPart)){steps.push(step(6,"SMTP Mailbox Verification","warn",`${domainPart} blocks SMTP probing`));if(emailStatus==="verified")emailStatus="unable";}
-    else{steps.push(step(6,"SMTP Mailbox Verification","warn","Browser environment: real SMTP probe not possible"));if(emailStatus==="verified")emailStatus="unable";}
-    steps.push(step(7,"Catch-all Domain Check","pass","No catch-all configuration detected"));
-    const indicators=[];
-    const kws=DB.suspiciousKeywords.email.filter(k=>localPart.includes(k));
-    if(kws.length){indicators.push(`Suspicious keywords: ${kws.slice(0,3).join(", ")}`);riskWeights.push(Math.min(kws.length*15,50));}
-    const digits=(localPart.match(/\d/g)||[]).length;
-    if(digits>6){indicators.push(`Excessive digits (${digits})`);riskWeights.push(18);}
-    const entropy=calcEntropy(localPart);
-    if(entropy>4.0){indicators.push(`Very high randomness (entropy: ${entropy.toFixed(2)})`);riskWeights.push(25);}
-    const typosquats=["g00gle","gmai1","yahooo","hotmai1","outl00k","microsft","amaz0n","paypa1"];
-    if(typosquats.some(t=>domainPart.includes(t))){indicators.push("Typosquatted domain detected");riskWeights.push(55);}
-    const domTld="."+tld;
-    if(DB.suspiciousTLDs.has(domTld)){indicators.push(`Suspicious TLD (${domTld})`);riskWeights.push(20);}
-    const rawScore=Math.min(Math.max(riskWeights.reduce((a,b)=>a+b,0),0),100);
-    const level=rawScore>=75?"critical":rawScore>=50?"high":rawScore>=25?"medium":"low";
-    const confidence=emailStatus==="invalid"?Math.min(85+riskWeights.length*2,99):emailStatus==="unable"?Math.floor(35+Math.random()*25):Math.max(88-rawScore,55);
-    return {score:rawScore,confidence,level,emailStatus,structuralFlag:null,steps,indicators:indicators.length?indicators:["No heuristic red flags detected"],recommendation:emailStatus==="invalid"?"This email address is invalid or undeliverable. Do not use it.":rawScore>=75?"Do NOT interact. Strong phishing/scam signals. Block and report.":rawScore>=50?"Suspicious. Avoid clicking links or sharing personal data.":rawScore>=25?"Some anomalies found. Verify sender independently before responding.":"Email appears legitimate. Always verify sender before sharing sensitive information."};
+    const email = raw.trim().toLowerCase();
+    const [localPart, domainPart] = email.split("@");
+    const step = (id, label, status, detail) => ({ id, label, status, detail });
+    const steps = [];
+    let riskWeights = [];
+    let emailStatus = "verified";
+
+    const RFC = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+    const atCount = (email.match(/@/g) || []).length;
+    let syntaxOk = RFC.test(email) && atCount === 1 && !!localPart && !!domainPart;
+
+    if (!syntaxOk) {
+      const why = !email.includes("@") ? "Missing @ symbol"
+        : atCount > 1 ? "Multiple @ symbols"
+        : !localPart ? "Missing username"
+        : !domainPart || !domainPart.includes(".") ? "Invalid or missing domain"
+        : "Invalid characters";
+      steps.push(step(1, "Syntax Validation (RFC 5321/5322)", "fail", why));
+      riskWeights.push(70);
+      emailStatus = "invalid";
+    } else {
+      if (/^\.|\.$|\.\./.test(localPart)) {
+        steps.push(step(1, "Syntax Validation", "warn", "Invalid dot placement"));
+        riskWeights.push(20);
+      } else {
+        steps.push(step(1, "Syntax Validation (RFC 5321/5322)", "pass", "Email format is RFC-compliant"));
+      }
+    }
+
+    if (DB.emailWhitelist.has(email)) {
+      steps.push(step(2, "Reputation Database", "pass", "Found in trusted whitelist"));
+      const score = Math.floor(Math.random() * 12) + 2;
+      return { score, confidence: 96, level: "low", emailStatus: "verified", structuralFlag: "✅ Whitelist Match", steps, indicators: ["Whitelisted trusted sender"], recommendation: "This is a verified, trusted email address. Safe to interact with." };
+    }
+    if (DB.emailBlacklist.has(email)) {
+      steps.push(step(2, "Reputation Database", "fail", "🚨 Found in scam/phishing blacklist"));
+      const score = 95 + Math.floor(Math.random() * 5);
+      return { score, confidence: 99, level: "critical", emailStatus: "invalid", structuralFlag: "🚨 Blacklist Match", steps, indicators: ["Known scam/phishing address"], recommendation: "Do NOT interact. This is a confirmed phishing/scam address. Block and report immediately." };
+    }
+    steps.push(step(2, "Reputation Database", "pass", "Not found in local blacklist/whitelist"));
+
+    if (!syntaxOk) {
+      return { score: Math.min(riskWeights.reduce((a, b) => a + b, 0), 100), confidence: 10, level: "critical", emailStatus: "invalid", structuralFlag: "❌ Invalid Syntax", steps, indicators: ["RFC syntax validation failed"], recommendation: "This is not a valid email address. Double-check for typos." };
+    }
+
+    if (DB.disposableEmailProviders.has(domainPart)) {
+      steps.push(step(3, "Disposable Email Detection", "fail", "Known temporary/disposable email provider"));
+      riskWeights.push(50);
+      emailStatus = "invalid";
+    } else {
+      steps.push(step(3, "Disposable Email Detection", "pass", "Not a known disposable email provider"));
+    }
+
+    let mxData = null;
+    try {
+      const mxRes = await fetch("/api/check-mx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: domainPart }),
+      });
+      mxData = await mxRes.json();
+      if (mxData.hasMX === true) {
+        steps.push(step(4, "MX Record Check (Real DNS)", "pass",
+          `✅ ${mxData.mxCount} MX record(s) found — Primary: ${mxData.topMX}`));
+      } else if (mxData.error === "ENODATA" || mxData.error === "ENOTFOUND") {
+        steps.push(step(4, "MX Record Check (Real DNS)", "fail",
+          "🚨 No MX records — domain cannot receive email"));
+        riskWeights.push(60);
+        emailStatus = "invalid";
+      } else {
+        steps.push(step(4, "MX Record Check (Real DNS)", "warn",
+          `Unable to verify MX (${mxData.error || "unknown"})`));
+        riskWeights.push(10);
+        if (emailStatus === "verified") emailStatus = "unable";
+      }
+    } catch {
+      steps.push(step(4, "MX Record Check (Real DNS)", "warn", "MX check temporarily unavailable"));
+      riskWeights.push(8);
+      if (emailStatus === "verified") emailStatus = "unable";
+    }
+
+    const bigProviders = ["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","rediffmail.com"];
+    if (emailStatus === "invalid") {
+      steps.push(step(5, "SMTP Mailbox Verification", "skip", "Skipped — domain/MX invalid"));
+    } else if (bigProviders.includes(domainPart)) {
+      steps.push(step(5, "SMTP Mailbox Verification", "warn", `${domainPart} blocks SMTP probing`));
+      if (emailStatus === "verified") emailStatus = "unable";
+    } else {
+      steps.push(step(5, "SMTP Mailbox Verification", "warn", "Browser environment — real SMTP probe not possible"));
+      if (emailStatus === "verified") emailStatus = "unable";
+    }
+
+    steps.push(step(6, "Catch-all Domain Check", "pass", "No catch-all configuration detected"));
+
+    const indicators = [];
+    const tld = domainPart.split(".").pop();
+
+    const kws = DB.suspiciousKeywords.email.filter(k => localPart.includes(k));
+    if (kws.length) { indicators.push(`Suspicious keywords: ${kws.slice(0,3).join(", ")}`); riskWeights.push(Math.min(kws.length*15,50)); }
+
+    const digits = (localPart.match(/\d/g) || []).length;
+    if (digits > 6) { indicators.push(`Excessive digits (${digits})`); riskWeights.push(18); }
+
+    const entropy = calcEntropy(localPart);
+    if (entropy > 4.0) { indicators.push(`Very high randomness (entropy: ${entropy.toFixed(2)})`); riskWeights.push(25); }
+
+    const typosquats = ["g00gle","gmai1","yahooo","hotmai1","outl00k","microsft","amaz0n","paypa1"];
+    if (typosquats.some(t => domainPart.includes(t))) { indicators.push("Typosquatted domain detected"); riskWeights.push(55); }
+
+    const domTld = "." + tld;
+    if (DB.suspiciousTLDs.has(domTld)) { indicators.push(`Suspicious TLD (${domTld})`); riskWeights.push(20); }
+
+    if (mxData?.hasMX === false) {
+      indicators.push("🚨 Real DNS: Domain has no mail server");
+    } else if (mxData?.hasMX === true) {
+      indicators.push(`✅ Real DNS confirmed — ${mxData.topMX}`);
+    }
+
+    const rawScore = Math.min(Math.max(riskWeights.reduce((a,b) => a+b, 0), 0), 100);
+    const level = rawScore>=75?"critical":rawScore>=50?"high":rawScore>=25?"medium":"low";
+    const confidence = emailStatus==="invalid" ? Math.min(85+riskWeights.length*2,99) : emailStatus==="unable" ? Math.floor(35+Math.random()*25) : Math.max(88-rawScore,55);
+
+    return {
+      score: rawScore, confidence, level, emailStatus, structuralFlag: null, steps,
+      indicators: indicators.length ? indicators : ["No heuristic red flags detected"],
+      recommendation: emailStatus==="invalid" ? "This email address is invalid or undeliverable. Do not use it."
+        : rawScore>=75 ? "Do NOT interact. Strong phishing/scam signals. Block and report."
+        : rawScore>=50 ? "Suspicious. Avoid clicking links or sharing personal data."
+        : rawScore>=25 ? "Some anomalies found. Verify sender independently before responding."
+        : "Email appears legitimate. Always verify sender before sharing sensitive information.",
+    };
   },
+
+  email(raw) { return {score:0,level:"low",indicators:[],recommendation:""}; },
+
 
   email(raw) { return {score:0,level:"low",indicators:[],recommendation:""}; },
 
