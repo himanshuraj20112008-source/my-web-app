@@ -822,8 +822,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
           <input className="ifield" value={input} onChange={e=>setInput(e.target.value)} placeholder={cur.ph} onKeyDown={e=>e.key==="Enter"&&runScan()} style={{padding:"11px 13px",fontSize:13}}/>
         )}
         <button className="btn-prime" onClick={runScan} disabled={loading||!input.trim()} style={{marginTop:11,padding:"11px 26px",fontSize:13}}>
-          {loading?(tab==="phone"?"⏳ Verifying with NumVerify…":tab==="url"?"⏳ Checking Safe Browsing…":"⏳ Analyzing…"):"🔬 Run Analysis"}
-        </button>
+        {loading?(tab==="phone"?"⏳ Verifying with NumVerify…":tab==="url"?"⏳ Checking Safe Browsing…":"⏳ Analyzing…"):"🔬 Run Analysis"}
       </div>
 
       {loading && (
