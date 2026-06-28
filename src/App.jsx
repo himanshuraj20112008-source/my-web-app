@@ -465,25 +465,58 @@ const RISK_ENGINE = {
   },
 
   email(raw) { return {score:0,level:"low",indicators:[],recommendation:""}; },
+  async sms(raw) {
+    const text = raw.trim();
+    const textLower = text.toLowerCase();
+    const indicators = [], weights = [];
 
+    const kws = DB.suspiciousKeywords.sms.filter(k => textLower.includes(k));
+    if (kws.length) { indicators.push(`High-risk keywords: ${kws.slice(0,5).join(", ")}`); weights.push(kws.length * 12); }
+    if (/https?:\/\/[^\s]+/i.test(text)) { indicators.push("Contains URL — inspect before clicking"); weights.push(20); }
+    if (/bit\.ly|tinyurl|t\.co|short\./i.test(text)) { indicators.push("Shortened URL detected"); weights.push(25); }
+    if (/\d{4,6}.*otp|otp.*\d{4,6}/i.test(text)) { indicators.push("Requests OTP — banks never ask via SMS"); weights.push(55); }
+    if (/₹|rs\.?\s*\d|lakh|crore/i.test(text)) { indicators.push("Monetary amount mentioned — financial bait"); weights.push(20); }
+    if (/won|winner|selected|congratulations|lucky/i.test(text)) { indicators.push("Prize/lottery language detected"); weights.push(35); }
+    if (/call now|reply now|act now|immediately|expire/i.test(text)) { indicators.push("Artificial urgency tactics"); weights.push(25); }
+    if (/account.*block|suspend|deactivat/i.test(text)) { indicators.push("Threat-based manipulation pattern"); weights.push(30); }
+    if (/click here|tap here|download now/i.test(text)) { indicators.push("Directive click action — common in phishing"); weights.push(22); }
 
-  email(raw) { return {score:0,level:"low",indicators:[],recommendation:""}; },
+    const urlMatches = text.match(/https?:\/\/[^\s]+/gi) || [];
+    for (const url of urlMatches.slice(0, 3)) {
+      try {
+        const gsb = await callGoogleSafeBrowsing(url);
+        if (gsb.status === "danger") { indicators.push(`🚨 URL flagged by Google Safe Browsing: ${url.slice(0,40)}`); weights.push(85); }
+        else if (gsb.status === "safe") { indicators.push(`✅ URL checked safe: ${url.slice(0,40)}`); }
+      } catch { indicators.push(`⚠️ URL check failed`); }
+    }
 
-  sms(raw) {
-    const text=raw.trim().toLowerCase();
-    const indicators=[],weights=[];
-    const kws=DB.suspiciousKeywords.sms.filter(k=>text.includes(k));
-    if(kws.length){indicators.push(`High-risk keywords: ${kws.slice(0,5).join(", ")}`);weights.push(kws.length*12);}
-    if(/https?:\/\/[^\s]+/i.test(text)){indicators.push("Contains URL — inspect before clicking");weights.push(20);}
-    if(/bit\.ly|tinyurl|t\.co|short\./i.test(text)){indicators.push("Shortened URL detected");weights.push(25);}
-    if(/\d{4,6}.*otp|otp.*\d{4,6}/i.test(text)){indicators.push("Requests OTP — banks never ask via SMS");weights.push(55);}
-    if(/₹|rs\.?\s*\d|lakh|crore/i.test(text)){indicators.push("Monetary amount mentioned — financial bait");weights.push(20);}
-    if(/won|winner|selected|congratulations|lucky/i.test(text)){indicators.push("Prize/lottery language detected");weights.push(35);}
-    if(/call now|reply now|act now|immediately|expire/i.test(text)){indicators.push("Artificial urgency tactics");weights.push(25);}
-    if(/account.*block|suspend|deactivat/i.test(text)){indicators.push("Threat-based manipulation pattern");weights.push(30);}
-    if(/click here|tap here|download now/i.test(text)){indicators.push("Directive click action — common in phishing");weights.push(22);}
-    const score=Math.min(weights.reduce((a,b)=>a+b,0),100);
-    return {score,level:score>=75?"critical":score>=50?"high":score>=25?"medium":"low",indicators:indicators.length?indicators:["No scam patterns detected in this message"],recommendation:score>=75?"This is almost certainly a scam. Do not call, click, or reply. Block the sender.":score>=50?"Very suspicious. Do not click any links. Contact your bank/service directly.":score>=25?"Some red flags. Verify the sender through official channels.":"Message appears benign. Always double-check before clicking unknown links."};
+    try {
+      const aiReply = await callAI({
+        messages: [{ role: "user", content: `Analyze this SMS for scam/phishing. Reply ONLY with JSON, no markdown:\n{"riskScore":<0-100>,"category":"<safe|suspicious|scam|phishing|fraud>","reason":"<one line>","hindiDetected":<true|false>}\n\nSMS: "${text.slice(0,500)}"` }],
+        system: "You are a cybersecurity SMS analyzer. Detect scams in Hindi, Hinglish, English. Reply ONLY with valid JSON, nothing else."
+      });
+      const clean = aiReply.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(clean);
+      if (parsed.hindiDetected) indicators.push(`🤖 AI: Hindi/Hinglish message detected — analyzed in context`);
+      if (parsed.reason) indicators.push(`🤖 AI Assessment: ${parsed.reason}`);
+      if (parsed.riskScore >= 70) weights.push(parsed.riskScore * 0.6);
+      else if (parsed.riskScore >= 40) weights.push(parsed.riskScore * 0.4);
+      if (parsed.category === "scam" || parsed.category === "fraud") { indicators.push(`🚨 AI Category: ${parsed.category.toUpperCase()} detected`); weights.push(30); }
+      else if (parsed.category === "phishing") { indicators.push(`🚨 AI Category: PHISHING detected`); weights.push(35); }
+      else if (parsed.category === "safe") { indicators.push(`✅ AI Category: Message appears safe`); weights.push(-5); }
+    } catch { indicators.push("⚠️ AI analysis unavailable — keyword engine used"); }
+
+    const score = Math.min(Math.max(weights.reduce((a,b) => a+b, 0), 0), 100);
+    const level = score>=75?"critical":score>=50?"high":score>=25?"medium":"low";
+    return {
+      score, level,
+      indicators: indicators.length ? indicators : ["No scam patterns detected in this message"],
+      recommendation:
+        score>=75 ? "This is almost certainly a scam. Do not call, click, or reply. Block the sender." :
+        score>=50 ? "Very suspicious. Do not click any links. Contact your bank/service directly." :
+        score>=25 ? "Some red flags. Verify the sender through official channels." :
+        "Message appears benign. Always double-check before clicking unknown links.",
+    };
   },
 
   domain(raw) {
@@ -731,6 +764,7 @@ function ScannerPage() {
     if (tab==="email") r=await RISK_ENGINE.emailFull(input);
     else if (tab==="url") r=await RISK_ENGINE.url(input);
     else if (tab==="phone") r=await RISK_ENGINE.phone(input);
+    else if (tab==="sms") r=await RISK_ENGINE.sms(input);
     else r=RISK_ENGINE[tab]?RISK_ENGINE[tab](input):{score:0,level:"low",indicators:["Scanner not implemented yet"],recommendation:""};
     setResult(r); setLoading(false);
 
