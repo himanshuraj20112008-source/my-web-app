@@ -981,7 +981,7 @@ function HomePage({ setPage }) {
   );
 }
 
-function ScannerPage() {
+function ScannerPage({ addScan }) {
   const [tab,setTab]=useState("upi");
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
