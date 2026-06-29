@@ -1375,6 +1375,7 @@ const { history, addScan, clearHistory } = useScanHistory();
           {page==="Assistant"&&<AssistantPage/>}
           {page==="Dashboard"&&<DashboardPage/>}
           {page==="Learn"&&<LearnPage/>}
+{page==="History"&&<HistoryPage history={history} clearHistory={clearHistory}/>}
         </main>
         <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:760,background:"rgba(8,14,28,0.97)",borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>
           {NAV.map(n=>(
