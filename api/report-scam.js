@@ -8,24 +8,29 @@ export default async function handler(req, res) {
   const { type, value, category, description } = req.body;
   if (!type || !value) return res.status(400).json({ error: "type and value required" });
 
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+  const SUPABASE_URL = "https://mecmxuzzjbkhlmwuvqik.supabase.co";
+  const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
+
+  if (!SUPABASE_KEY) {
+    return res.status(500).json({ error: "Missing SUPABASE_ANON_KEY env var" });
+  }
 
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/scam_reports`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
         "Prefer": "return=minimal"
       },
       body: JSON.stringify({ type, value, category, description })
     });
 
+    const text = await response.text();
+
     if (!response.ok) {
-      const err = await response.text();
-      return res.status(500).json({ error: err });
+      return res.status(500).json({ error: text, status: response.status });
     }
 
     return res.status(200).json({ success: true });
