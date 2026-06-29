@@ -980,7 +980,12 @@ function HomePage({ setPage }) {
     </div>
   );
 }
-
+function shareOnWhatsApp(type, input, score, level, indicators) {
+  const emoji = level==="critical"?"🔴":level==="high"?"🟠":level==="medium"?"🟡":"🟢";
+  const msg = `${emoji} *SentinelX Scam Alert*\n\n*Type:* ${type.toUpperCase()}\n*Analyzed:* ${input.slice(0,50)}\n*Risk Score:* ${score}/100\n*Risk Level:* ${level.toUpperCase()}\n\n*Top Indicators:*\n${indicators.slice(0,3).map(i=>`• ${i}`).join("\n")}\n\n🛡️ Scan yourself at: https://my-web-app-2fhc.vercel.app`;
+  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+}
 function ScannerPage({ addScan }) {
   const [tab,setTab]=useState("upi");
   const [input,setInput]=useState("");
