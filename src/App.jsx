@@ -1051,11 +1051,19 @@ function useScanHistory() {
       return updated;
     });
   }
+  function deleteScan(id) {
+    setHistory(prev => {
+      const updated = prev.filter(h => h.id !== id);
+      localStorage.setItem("sentinelx_history", JSON.stringify(updated));
+      return updated;
+    });
+  }
   function clearHistory() {
     localStorage.removeItem("sentinelx_history");
     setHistory([]);
   }
-  return { history, addScan, clearHistory };
+  return { history, addScan, deleteScan, clearHistory };
+}
 }
 
 function HistoryPage({ history, clearHistory }) {
