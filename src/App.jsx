@@ -1611,7 +1611,7 @@ const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",ic
 
 export default function SentinelX() {
 const [page,setPage]=useState("Home");
-const { history, addScan, clearHistory } = useScanHistory();
+const { history, addScan, deleteScan, clearHistory } = useScanHistory();
   return (
     <>
       <style>{css}</style>
