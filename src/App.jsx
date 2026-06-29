@@ -1372,7 +1372,7 @@ const { history, addScan, clearHistory } = useScanHistory();
         </header>
         <main>
           {page==="Home"&&<HomePage setPage={setPage}/>}
-          {page==="Scanner"&&<ScannerPage/>}
+          {page==="Scanner"&&<ScannerPage addScan={addScan}/>}
           {page==="Assistant"&&<AssistantPage/>}
           {page==="Dashboard"&&<DashboardPage/>}
           {page==="Learn"&&<LearnPage/>}
