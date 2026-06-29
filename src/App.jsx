@@ -980,6 +980,23 @@ function HomePage({ setPage }) {
     </div>
   );
 }
+async function reportScam(type, input, level) {
+  try {
+    await fetch("/api/report-scam", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: type,
+        value: input,
+        category: level,
+        description: `Reported via SentinelX scan. Risk level: ${level}`
+      })
+    });
+    alert("✅ Report submitted! Thank you for helping the community.");
+  } catch {
+    alert("❌ Report failed. Please try again.");
+  }
+}
 function shareOnWhatsApp(type, input, score, level, indicators) {
   const emoji = level==="critical"?"🔴":level==="high"?"🟠":level==="medium"?"🟡":"🟢";
   const msg = `${emoji} *SentinelX Scam Alert*\n\n*Type:* ${type.toUpperCase()}\n*Analyzed:* ${input.slice(0,50)}\n*Risk Score:* ${score}/100\n*Risk Level:* ${level.toUpperCase()}\n\n*Top Indicators:*\n${indicators.slice(0,3).map(i=>`• ${i}`).join("\n")}\n\n🛡️ Scan yourself at: https://my-web-app-2fhc.vercel.app`;
