@@ -519,25 +519,98 @@ const RISK_ENGINE = {
     };
   },
 
-  domain(raw) {
-    const domain=raw.trim().toLowerCase().replace(/^https?:\/\//,"").split("/")[0];
-    const indicators=[],weights=[];
-    if(DB.domainBlacklist.has(domain)){indicators.push("🚨 Domain in threat intelligence blacklist");weights.push(90);}
-    const tld="."+domain.split(".").pop();
-    if(DB.suspiciousTLDs.has(tld)){indicators.push(`Suspicious TLD (${tld})`);weights.push(22);}
-    if(DB.trustedTLDs.has("."+domain.split(".").slice(-2).join(".")))weights.push(-20);
-    const kws=DB.suspiciousKeywords.domain.filter(k=>domain.includes(k));
-    if(kws.length){indicators.push(`Suspicious keywords in domain: ${kws.join(", ")}`);weights.push(kws.length*16);}
-    const entropy=calcEntropy(domain.split(".")[0]);
-    if(entropy>3.6){indicators.push(`High domain randomness (entropy: ${entropy.toFixed(2)})`);weights.push(22);}
-    if(domain.split(".")[0].length>20){indicators.push("Unusually long domain name");weights.push(16);}
-    if((domain.match(/\d/g)||[]).length>3){indicators.push("Excessive digits in domain");weights.push(18);}
-    if((domain.match(/-/g)||[]).length>2){indicators.push("Multiple hyphens — common in phishing domains");weights.push(20);}
-    const simDomains=["paypal","amazon","flipkart","sbi","hdfc","icici","google","microsoft"];
-    const hit=simDomains.find(s=>domain.includes(s)&&!domain.endsWith(`.${s}.com`)&&!domain.endsWith(`${s}.com`));
-    if(hit){indicators.push(`Mimics trusted brand: ${hit}`);weights.push(40);}
-    const score=Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
-    return {score,level:score>=75?"critical":score>=50?"high":score>=25?"medium":"low",indicators:indicators.length?indicators:["Domain appears legitimate"],recommendation:score>=75?"Do not visit. This domain shows strong malicious indicators.":score>=50?"Suspicious domain. Access official sites by typing them manually.":score>=25?"Proceed carefully. Verify this is the official website.":"Domain appears low-risk. Always verify SSL and domain authenticity."};
+ async domain(raw) {
+    const domain = raw.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
+    const indicators = [], weights = [];
+
+    // ── Local rules (fast, instant) ──────────────────────────────
+    if (DB.domainBlacklist.has(domain)) {
+      indicators.push("🚨 Domain in local threat blacklist"); weights.push(90);
+    }
+    const tld = "." + domain.split(".").pop();
+    if (DB.suspiciousTLDs.has(tld)) {
+      indicators.push(`Suspicious TLD (${tld})`); weights.push(22);
+    }
+    if (DB.trustedTLDs.has("." + domain.split(".").slice(-2).join("."))) weights.push(-20);
+    const kws = DB.suspiciousKeywords.domain.filter(k => domain.includes(k));
+    if (kws.length) { indicators.push(`Suspicious keywords: ${kws.join(", ")}`); weights.push(kws.length * 16); }
+    const entropy = calcEntropy(domain.split(".")[0]);
+    if (entropy > 3.6) { indicators.push(`High randomness (entropy: ${entropy.toFixed(2)})`); weights.push(22); }
+    if (domain.split(".")[0].length > 20) { indicators.push("Unusually long domain"); weights.push(16); }
+    if ((domain.match(/\d/g) || []).length > 3) { indicators.push("Excessive digits"); weights.push(18); }
+    if ((domain.match(/-/g) || []).length > 2) { indicators.push("Multiple hyphens — phishing pattern"); weights.push(20); }
+    const simDomains = ["paypal","amazon","flipkart","sbi","hdfc","icici","google","microsoft"];
+    const hit = simDomains.find(s => domain.includes(s) && !domain.endsWith(`${s}.com`) && !domain.endsWith(`${s}.in`));
+    if (hit) { indicators.push(`Brand impersonation: mimics "${hit}"`); weights.push(40); }
+
+    // ── Real-time API check ───────────────────────────────────────
+    let realtime = null;
+    try {
+      const res = await fetch("/api/analyze-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+      realtime = await res.json();
+
+      // VirusTotal signals
+      if (realtime.virusTotal?.available) {
+        const vt = realtime.virusTotal;
+        if (vt.malicious >= 5) { indicators.push(`🚨 VirusTotal: ${vt.malicious}/${vt.total} engines flagged MALICIOUS`); weights.push(85); }
+        else if (vt.malicious >= 1) { indicators.push(`⚠️ VirusTotal: ${vt.malicious}/${vt.total} engines flagged suspicious`); weights.push(40); }
+        else { indicators.push(`✅ VirusTotal: Clean (0/${vt.total} engines flagged)`); weights.push(-10); }
+        if (vt.reputation !== null && vt.reputation < -5) { indicators.push(`🔴 VirusTotal reputation score: ${vt.reputation}`); weights.push(20); }
+      } else {
+        indicators.push("⚠️ VirusTotal: Unavailable (add API key in Vercel)");
+      }
+
+      // WHOIS / Domain Age signals
+      if (realtime.whois?.available) {
+        const w = realtime.whois;
+        indicators.push(`📅 Domain age: ${w.ageLabel || "Unknown"}`);
+        if (w.ageDays !== null && w.ageDays < 30) weights.push(55);
+        else if (w.ageDays !== null && w.ageDays < 90) weights.push(30);
+        else if (w.ageDays !== null && w.ageDays > 730) weights.push(-10);
+        if (w.registrar) indicators.push(`🏢 Registrar: ${w.registrar}`);
+      } else {
+        indicators.push("⚠️ WHOIS: Data unavailable for this domain");
+      }
+
+      // SSL signals
+      if (realtime.ssl?.available) {
+        const s = realtime.ssl;
+        if (!s.hasSSL) { indicators.push("🔴 No SSL certificate — not secure"); weights.push(30); }
+        else if (s.isExpired) { indicators.push("🔴 SSL certificate EXPIRED"); weights.push(40); }
+        else if (s.isSelfSigned) { indicators.push("🟠 Self-signed certificate — not from trusted CA"); weights.push(25); }
+        else if (s.isTrustedIssuer) { indicators.push(`✅ Valid SSL — issued by ${s.issuer} (${s.daysLeft} days left)`); weights.push(-5); }
+        else { indicators.push(`⚠️ SSL from unknown issuer: ${s.issuer}`); weights.push(10); }
+      } else {
+        indicators.push("⚠️ SSL check unavailable");
+      }
+
+      // DNS signals
+      if (realtime.dns?.available) {
+        if (!realtime.dns.isIPv4) { indicators.push("🔴 No DNS A record — domain may not exist"); weights.push(35); }
+        else { indicators.push(`✅ DNS resolves to: ${realtime.dns.aRecords[0]}`); }
+        if (realtime.dns.hasSPF) indicators.push("✅ SPF record present");
+        if (realtime.dns.hasDMARC) indicators.push("✅ DMARC policy found");
+      }
+    } catch {
+      indicators.push("⚠️ Real-time check unavailable — local analysis only");
+    }
+
+    const score = Math.min(Math.max(weights.reduce((a, b) => a + b, 0), 0), 100);
+    const level = score >= 75 ? "critical" : score >= 50 ? "high" : score >= 25 ? "medium" : "low";
+
+    return {
+      score, level, realtimeData: realtime,
+      indicators: indicators.length ? indicators : ["Domain appears legitimate"],
+      recommendation:
+        score >= 75 ? "Do not visit. This domain shows strong malicious indicators. Report to cybercrime.gov.in" :
+        score >= 50 ? "Suspicious domain. Access official sites by typing them manually in browser." :
+        score >= 25 ? "Proceed carefully. Verify this is the official website before entering any data." :
+        "Domain appears low-risk. Always verify SSL and domain authenticity.",
+    };
   },
 };
 
