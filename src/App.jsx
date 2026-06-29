@@ -563,7 +563,114 @@ const RISK_ENGINE = {
     };
   },
 
-  email(raw) { return {score:0,level:"low",indicators:[],recommendation:""}; },
+  async email(raw) {
+    const addr = raw.trim().toLowerCase();
+    const indicators = [], weights = [];
+    const [user, domain] = addr.split("@");
+
+    if (!user || !domain) {
+      indicators.push("❌ Invalid email format — missing @ symbol");
+      weights.push(40);
+      return { score:40, level:"medium", indicators, 
+        recommendation:"Not a valid email address.",
+        highlightPart: "full" };
+    }
+
+    // ── 1. Typosquatting Detection ──────────────────────────────
+    const popularDomains = [
+      "gmail.com","yahoo.com","hotmail.com","outlook.com","rediffmail.com",
+      "ymail.com","icloud.com","protonmail.com","sbi.co.in","hdfcbank.com",
+      "icicibank.com","axisbank.com","paytm.com","npci.org.in"
+    ];
+
+    function levenshtein(a, b) {
+      const dp = Array.from({length: a.length+1}, (_,i) => 
+        Array.from({length: b.length+1}, (_,j) => i===0?j:j===0?i:0));
+      for(let i=1;i<=a.length;i++)
+        for(let j=1;j<=b.length;j++)
+          dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 
+            1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+      return dp[a.length][b.length];
+    }
+
+    let typosquatMatch = null;
+    for (const popular of popularDomains) {
+      if (domain === popular) { typosquatMatch = null; break; }
+      const dist = levenshtein(domain, popular);
+      if (dist > 0 && dist <= 2) {
+        typosquatMatch = popular;
+        break;
+      }
+    }
+
+    let highlightPart = null;
+    if (typosquatMatch) {
+      indicators.push(`🚨 Typosquatting detected — "${domain}" looks like "${typosquatMatch}"`);
+      indicators.push(`⚠️ Danger in: email domain "@${domain}" is suspicious`);
+      weights.push(55);
+      highlightPart = "domain";
+    }
+
+    // ── 2. Suspicious TLD ────────────────────────────────────────
+    const suspiciousTlds = [".xyz",".top",".click",".loan",".work",".gq",".tk",".ml",".cf",".cn"];
+    const tldHit = suspiciousTlds.find(t => domain.endsWith(t));
+    if (tldHit) {
+      indicators.push(`⚠️ Suspicious TLD: ".${tldHit}" — commonly used in scam emails`);
+      indicators.push(`⚠️ Danger in: domain extension "${tldHit}"`);
+      weights.push(30);
+      highlightPart = highlightPart || "domain";
+    }
+
+    // ── 3. Suspicious keywords in user part ─────────────────────
+    const suspiciousUser = ["kyc","verify","update","secure","helpdesk","support",
+      "noreply","alert","refund","reward","prize","lucky","winner"];
+    const userHit = suspiciousUser.filter(k => user.includes(k));
+    if (userHit.length) {
+      indicators.push(`⚠️ Suspicious keyword in username: "${userHit.join(", ")}"`);
+      indicators.push(`⚠️ Danger in: email username "${user}"`);
+      weights.push(userHit.length * 15);
+      highlightPart = highlightPart || "user";
+    }
+
+    // ── 4. Excessive digits ──────────────────────────────────────
+    const digits = (user.match(/\d/g)||[]).length;
+    if (digits > 6) {
+      indicators.push(`Excessive digits in username (${digits}) — unusual pattern`);
+      weights.push(12);
+    }
+
+    // ── 5. MX Record Check ───────────────────────────────────────
+    try {
+      const mx = await fetch(`/api/check-mx?domain=${encodeURIComponent(domain)}`);
+      const mxData = await mx.json();
+      if (mxData.valid) {
+        indicators.push(`✅ Real DNS confirmed — ${mxData.mx}`);
+        weights.push(-10);
+      } else {
+        indicators.push(`❌ No valid MX record — domain cannot receive emails`);
+        weights.push(35);
+        highlightPart = highlightPart || "domain";
+      }
+    } catch {
+      indicators.push("⚠️ MX check unavailable");
+    }
+
+    const score = Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
+    const level = score>=75?"critical":score>=50?"high":score>=25?"medium":"low";
+
+    return { 
+      score, level, 
+      indicators: indicators.length ? indicators : ["No suspicious patterns detected"],
+      highlightPart,
+      recommendation: score>=75
+        ? `🚨 Dangerous email! "${highlightPart==="domain"?`Domain @${domain}`:`Username ${user}`}" is suspicious. Do NOT interact.`
+        : score>=50
+        ? `⚠️ Suspicious email detected. Verify sender identity before responding.`
+        : score>=25
+        ? "Some concerns found. Double-check before sharing sensitive info."
+        : "Email appears legitimate. Always verify sender before sharing sensitive information."
+    };
+  },
   async sms(raw) {
     const text = raw.trim();
     const textLower = text.toLowerCase();
