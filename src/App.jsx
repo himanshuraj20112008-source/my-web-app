@@ -1066,7 +1066,7 @@ function useScanHistory() {
 }
 }
 
-function HistoryPage({ history, clearHistory }) {
+function HistoryPage({ history, deleteScan, clearHistory }) {
   const lc = { critical:C.danger, high:"#FF7A00", medium:C.warning, low:C.success };
   const icons = { upi:"💳", url:"🔗", phone:"📞", email:"📧", sms:"💬", domain:"🌐" };
   return (
@@ -1077,7 +1077,9 @@ function HistoryPage({ history, clearHistory }) {
           <p style={{color:C.muted,fontSize:12}}>Your last {history.length} scans</p>
         </div>
         {history.length>0 && (
-          <button className="btn-ghost" style={{fontSize:11,padding:"6px 14px"}} onClick={clearHistory}>
+          <button className="btn-ghost" style={{fontSize:11,padding:"6px 14px"}} onClick={()=>{
+            if(window.confirm("Clear all scan history? This cannot be undone.")) clearHistory();
+          }}>
             🗑️ Clear All
           </button>
         )}
@@ -1100,6 +1102,29 @@ function HistoryPage({ history, clearHistory }) {
                 <div style={{fontSize:14,fontWeight:700,color:lc[h.level]}}>{h.score}</div>
                 <div style={{fontSize:9,color:lc[h.level],fontWeight:600,textTransform:"uppercase"}}>{h.level}</div>
               </div>
+              <button
+                onClick={()=>deleteScan(h.id)}
+                title="Delete this entry"
+                style={{
+                  flexShrink:0,
+                  width:30,
+                  height:30,
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"center",
+                  borderRadius:8,
+                  background:"rgba(255,77,79,0.08)",
+                  border:"1px solid rgba(255,77,79,0.25)",
+                  color:C.danger,
+                  cursor:"pointer",
+                  fontSize:14,
+                  transition:"all .15s"
+                }}
+                onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,77,79,0.18)"}}
+                onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,77,79,0.08)"}}
+              >
+                🗑️
+              </button>
             </div>
           ))}
         </div>
