@@ -886,7 +886,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
             {t.icon} {t.label}
           </button>
         ))}
-      </button>
+       </div>
       <div className="glass" style={{padding:18,marginBottom:14}}>
         <div style={{fontSize:12,color:C.muted,marginBottom:8}}>Enter {cur.label} to analyze:</div>
         {cur.big?(
@@ -896,7 +896,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
         )}
         <button className="btn-prime" onClick={runScan} disabled={loading||!input.trim()} style={{marginTop:11,padding:"11px 26px",fontSize:13}}>
         {loading?(tab==="phone"?"⏳ Verifying with NumVerify…":tab==="url"?"⏳ Checking Safe Browsing…":"⏳ Analyzing…"):"🔬 Run Analysis"}
-      </div>
+        </button>
 
       {loading && (
         <div className="glass" style={{padding:28,textAlign:"center"}}>
