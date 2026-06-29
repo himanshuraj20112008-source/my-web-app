@@ -1344,7 +1344,7 @@ function LearnPage() {
   );
 }
 
-const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",icon:"🤖"},{id:"Dashboard",icon:"📊"},{id:"Learn",icon:"🎓"}];
+const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",icon:"🤖"},{id:"Dashboard",icon:"📊"},{id:"Learn",icon:"🎓"},{id:"History",icon:"🕐"}];
 
 export default function SentinelX() {
   const [page,setPage]=useState("Home");
