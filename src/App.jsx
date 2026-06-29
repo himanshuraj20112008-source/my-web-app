@@ -143,81 +143,180 @@ async function callGoogleSafeBrowsing(rawUrl) {
 
 // ─── RISK ENGINE ──────────────────────────────────────────────────────────────
 const RISK_ENGINE = {
-  upi(raw) {
+  async upi(raw) {
     const id = raw.trim().toLowerCase();
     const indicators = [], weights = [];
-    if (DB.upiWhitelist.has(id)) return { score:4, level:"low", indicators:["Verified merchant UPI ID"], recommendation:"This UPI ID belongs to a known trusted merchant. Safe to proceed." };
-    if (DB.upiBlacklist.has(id)) { indicators.push("🚨 Found in fraud blacklist database"); weights.push(90); }
-    const [handle, provider] = id.split("@");
-    if (!handle || !provider) { indicators.push("Invalid UPI format"); weights.push(40); }
-    const kws = DB.suspiciousKeywords.upi.filter(k=>handle?.includes(k));
-    if (kws.length) { indicators.push(`Suspicious keyword(s): ${kws.join(", ")}`); weights.push(kws.length*18); }
-    const digitRatio = (handle?.match(/\d/g)||[]).length / (handle?.length||1);
-    if (digitRatio > 0.55) { indicators.push("High digit density — unusual identifier pattern"); weights.push(22); }
-    const entropy = calcEntropy(handle||"");
-    if (entropy > 3.6) { indicators.push(`High randomness score (entropy: ${entropy.toFixed(2)})`); weights.push(18); }
-    if ((handle?.length||0) > 22) { indicators.push("Abnormally long handle"); weights.push(12); }
-    if (hasRepeats(handle||"")) { indicators.push("Repeated character pattern detected"); weights.push(14); }
-    const suspProviders = ["fake","scam","fraud","phish","temp"];
-    if (suspProviders.some(s=>provider?.includes(s))) { indicators.push("Unrecognized or spoofed UPI provider"); weights.push(35); }
-    const communityData = DB.communityReports[id];
-    if (communityData) { indicators.push(`Community reported ${communityData.reports}x — category: ${communityData.category}`); weights.push(Math.min(communityData.reports*4,40)); }
-    const score = Math.min(weights.reduce((a,b)=>a+b,0),100);
-    return { score, level:score>=75?"critical":score>=50?"high":score>=25?"medium":"low", indicators:indicators.length?indicators:["No immediate red flags detected"], recommendation:score>=75?"⚠️ Do NOT proceed. This UPI ID matches multiple fraud patterns. Report it to your bank immediately.":score>=50?"Exercise extreme caution. Verify this UPI ID with the recipient over a trusted channel before transferring any money.":score>=25?"Some indicators found. Double-check the recipient's identity before proceeding with any payment.":"No major concerns found. Still verify the recipient independently as a good practice." };
-  },
 
-  async url(raw) {
-    const url = raw.trim().toLowerCase();
-    const indicators = [], weights = [];
-    let domainAgeFlag = null;
-    try {
-      const u = new URL(url.startsWith("http") ? url : "https://" + url);
-      const host = u.hostname;
-      const path = u.pathname + u.search;
-      if (DB.domainBlacklist.has(host)) { indicators.push("🚨 Domain found in phishing blacklist"); weights.push(88); }
-      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) { indicators.push("🚨 IP address used instead of domain — major red flag"); weights.push(75); }
-      const tldPart = "." + host.split(".").pop();
-      if (DB.suspiciousTLDs.has(tldPart)) { indicators.push(`Suspicious TLD (${tldPart}) — commonly used in scam sites`); weights.push(22); }
-      const tld2 = "." + host.split(".").slice(-2).join(".");
-      if (DB.trustedTLDs.has(tld2)) weights.push(-20);
-      const suspTLDs = [".xyz",".win",".club",".top",".tk",".ml",".ga",".cf"];
-      const isSuspTLD = suspTLDs.some(t => host.endsWith(t));
-      const hasNumbers = /\d/.test(host.split(".")[0]);
-      const isLong = host.split(".")[0].length > 15;
-      if (isSuspTLD && (hasNumbers || isLong)) { indicators.push("Likely newly registered domain — high-risk pattern"); weights.push(30); domainAgeFlag = "⚠️ Likely New Domain"; }
-      const subdomains = host.split(".").length - 2;
-      if (subdomains >= 3) { indicators.push(`Excessive subdomains (${subdomains}) — common in phishing URLs`); weights.push(subdomains * 10); }
-      const kws = DB.suspiciousKeywords.url.filter(k => path.includes(k));
-      if (kws.length) { indicators.push(`Suspicious path keywords: ${kws.join(", ")}`); weights.push(kws.length * 15); }
-      if (host.replace("www.","").split(".")[0].length > 22) { indicators.push("Unusually long domain name — spoofing indicator"); weights.push(18); }
-      const entropy = calcEntropy(host);
-      if (entropy > 3.8) { indicators.push(`High domain randomness (entropy: ${entropy.toFixed(2)}) — auto-generated domain`); weights.push(22); }
-      if (!url.startsWith("https")) { indicators.push("No HTTPS — data transmitted without encryption"); weights.push(25); }
-      const shorteners = ["bit.ly","t.co","tinyurl.com","goo.gl","ow.ly","short.link","rb.gy","tiny.cc","is.gd","cutt.ly"];
-      if (shorteners.some(s => host.includes(s))) { indicators.push("URL shortener detected — real destination is hidden"); weights.push(20); }
-      const brands = [
-        {name:"paypal",variants:["paypa1","paypai","paypa-l"]},{name:"amazon",variants:["amaz0n","arnazon","amazzon"]},
-        {name:"google",variants:["g00gle","go0gle","googIe"]},{name:"facebook",variants:["faceb00k","facebok","faceboook"]},
-        {name:"microsoft",variants:["microsft","micros0ft","mlcrosoft"]},{name:"netflix",variants:["netfl1x","netfiix","netlfix"]},
-        {name:"sbi",variants:["sb1","sbl"]},{name:"hdfc",variants:["hdfcc","hdtc"]},
-        {name:"icici",variants:["icicl","1cici"]},{name:"paytm",variants:["pay-tm","paytnn","paytm-kyc"]},
-      ];
-      const typoHit = brands.find(b => b.variants.some(v=>host.includes(v)) || (host.includes(b.name)&&!host.endsWith(`${b.name}.com`)&&!host.endsWith(`${b.name}.in`)));
-      if (typoHit) { indicators.push(`Brand impersonation: mimics "${typoHit.name}" — typosquatting detected`); weights.push(50); }
-      if ((url.match(/@/g)||[]).length > 0) { indicators.push("@ symbol in URL — used to hide real destination"); weights.push(40); }
-      if ((url.match(/https?:\/\//g)||[]).length > 1) { indicators.push("Multiple protocol indicators — redirect chain detected"); weights.push(35); }
-      const specialCount = (url.match(/[%&=?#]/g)||[]).length;
-      if (specialCount > 8) { indicators.push(`Excessive special characters (${specialCount}) — obfuscation attempt`); weights.push(20); }
-    } catch { indicators.push("Invalid or malformed URL format"); weights.push(35); }
+    // ── 1. Whitelist / Blacklist ──────────────────────────────────
+    if (DB.upiWhitelist.has(id)) return { 
+      score:4, level:"low", 
+      indicators:["✅ Verified merchant UPI ID — whitelisted"], 
+      recommendation:"This UPI ID belongs to a known trusted merchant. Safe to proceed." 
+    };
+    if (DB.upiBlacklist.has(id)) { 
+      indicators.push("🚨 Found in fraud blacklist database"); 
+      weights.push(90); 
+    }
+
+    const [handle, provider] = id.split("@");
+    if (!handle || !provider) { 
+      indicators.push("Invalid UPI format — missing @ or handle"); 
+      weights.push(40); 
+    }
+
+    // ── 2. EXPANDED Real UPI Provider Validation (50+ providers) ─
+    const validProviders = new Set([
+      // Major Banks
+      "oksbi","okaxis","okicici","okhdfcbank","ybl","ibl","axl","upi",
+      "hdfcbank","icici","sbi","axisbank","pnb","boi","bob","cnrb",
+      "union","uboi","utbi","ubi","aubank","idbi","idfc","idfcbank",
+      "federal","fbpe","fbl","kvb","kvbank","cub","tmb","karb",
+      "dbs","rbl","rblbank","jsb","jkb","barodampay","syndicat",
+      // Payment Apps
+      "paytm","paytmbank","apl","amazon","amazonpay",
+      "phonepe","yesbank","yesbankltd",
+      "jiomoney","jio","airtel","airtelpaymentsbank",
+      "freecharge","fc","olamoney","ola",
+      "mobikwik","mpesa","lazmoney",
+      // Corporate/Others  
+      "rajgovt","hpgov","mahagov","goagov",
+      "npci","npcibiz","bhim",
+      "postbank","dop","ippbonline",
+    ]);
+
+    const suspiciousProviders = new Set([
+      "fake","scam","fraud","phish","temp","test","hack","free",
+      "prize","reward","lucky","winner","lottery","kyc","verify",
+      "helpdesk","support","refund","cashback","offer","bonus",
+    ]);
+
+    let providerStatus = "unknown";
+    if (provider) {
+      if (validProviders.has(provider)) {
+        indicators.push(`✅ Valid UPI provider: @${provider} — registered & verified`);
+        weights.push(-15);
+        providerStatus = "valid";
+      } else if (suspiciousProviders.has(provider) || [...suspiciousProviders].some(s => provider.includes(s))) {
+        indicators.push(`🚨 Suspicious/fake UPI provider: @${provider}`);
+        weights.push(55);
+        providerStatus = "suspicious";
+      } else {
+        indicators.push(`⚠️ Unrecognized UPI provider: @${provider} — not in verified list`);
+        weights.push(20);
+        providerStatus = "unknown";
+      }
+    }
+
+    // ── 3. Handle Pattern Analysis ────────────────────────────────
+    const kws = DB.suspiciousKeywords.upi.filter(k => handle?.includes(k));
+    if (kws.length) { 
+      indicators.push(`Suspicious keyword(s) in handle: ${kws.join(", ")}`); 
+      weights.push(kws.length * 18); 
+    }
+
+    const digitRatio = (handle?.match(/\d/g)||[]).length / (handle?.length||1);
+    if (digitRatio > 0.55) { 
+      indicators.push("High digit density — unusual identifier pattern"); 
+      weights.push(22); 
+    }
+
+    const entropy = calcEntropy(handle||"");
+    if (entropy > 3.6) { 
+      indicators.push(`High randomness score (entropy: ${entropy.toFixed(2)})`); 
+      weights.push(18); 
+    }
+
+    if ((handle?.length||0) > 22) { 
+      indicators.push("Abnormally long handle — spoofing pattern"); 
+      weights.push(12); 
+    }
+
+    if (hasRepeats(handle||"")) { 
+      indicators.push("Repeated character pattern detected"); 
+      weights.push(14); 
+    }
+
+    // ── 4. Community Reports ──────────────────────────────────────
+    const communityData = DB.communityReports[id];
+    if (communityData) { 
+      indicators.push(`🚨 Community reported ${communityData.reports}x — category: ${communityData.category}`); 
+      weights.push(Math.min(communityData.reports*4,40)); 
+    }
+
+    // ── 5. Expanded Fraud Pattern Database ───────────────────────
+    const fraudPatterns = [
+      // KYC scams
+      /kyc.*(update|verify|complete|urgent)/i,
+      /verify.*kyc/i,
+      // Reward/Prize scams  
+      /reward\d+/i,
+      /prize.*claim/i,
+      /lucky.*winner/i,
+      /cashback\d+/i,
+      // Government impersonation
+      /pm(kisan|relief|care|fund)/i,
+      /rbi(official|help|reward)/i,
+      /income.*tax.*refund/i,
+      // Bank impersonation
+      /(sbi|hdfc|icici|axis|pnb).*(help|support|kyc|reward|refund)/i,
+      // Crypto scams
+      /crypto.*profit/i,
+      /bitcoin.*earn/i,
+      /nft.*reward/i,
+    ];
+
+    const patternHit = fraudPatterns.find(p => p.test(handle||"") || p.test(id));
+    if (patternHit) {
+      indicators.push(`🚨 Fraud pattern detected: matches known scam template`);
+      weights.push(45);
+    }
+
+    // ── 6. AI Real-Time Assessment ────────────────────────────────
     let localScore = Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
-    const gsb = await callGoogleSafeBrowsing(raw.trim());
-    let gsbBadge = null;
-    if (gsb.status==="danger") { localScore=Math.max(localScore,90); gsb.threats.forEach(t=>indicators.push(`🚨 Google Safe Browsing: ${t} detected`)); gsbBadge="danger"; }
-    else if (gsb.status==="safe") { indicators.push("✅ Google Safe Browsing: No threats detected"); gsbBadge="safe"; }
-    else { indicators.push("⚠️ Google Safe Browsing: Unavailable"); gsbBadge="unavailable"; }
-    const finalScore = gsb.status==="danger" ? Math.max(localScore,90) : localScore;
-    const level = finalScore>=75?"critical":finalScore>=50?"high":finalScore>=25?"medium":"low";
-    return { score:finalScore, level, gsbBadge, domainAgeFlag, indicators:indicators.length?indicators:["No malicious patterns detected"], recommendation:finalScore>=75?"Do NOT visit this URL. Multiple fraud indicators detected. Delete the message containing this link immediately.":finalScore>=50?"Avoid this URL. Verify the official website by typing it manually in your browser.":finalScore>=25?"Proceed with caution. Do not enter passwords or payment details on this site.":"URL appears low-risk. Still avoid entering sensitive data on unfamiliar sites." };
+    
+    try {
+      const aiReply = await callAI({
+        messages: [{ 
+          role: "user", 
+          content: `Analyze this UPI ID for fraud risk. Reply ONLY with JSON, no markdown:\n{"riskScore":<0-100>,"category":"<safe|suspicious|scam|fraud>","reason":"<one line>","providerLegit":<true|false>}\n\nUPI ID: "${id}"\nProvider: "${provider}"\nHandle: "${handle}"\nKnown indicators found: ${indicators.join("; ")}` 
+        }],
+        system: "You are a UPI fraud detection expert for India. Analyze UPI IDs for scam patterns. Known fraud patterns: fake KYC requests, prize scams, government impersonation, bank impersonation. Reply ONLY with valid JSON."
+      });
+      
+      const clean = aiReply.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(clean);
+      
+      if (parsed.reason) indicators.push(`🤖 AI Assessment: ${parsed.reason}`);
+      if (parsed.providerLegit === false && providerStatus !== "valid") {
+        indicators.push(`🤖 AI: Provider @${provider} appears illegitimate`);
+        weights.push(20);
+      }
+      if (parsed.riskScore >= 70) weights.push(parsed.riskScore * 0.5);
+      else if (parsed.riskScore >= 40) weights.push(parsed.riskScore * 0.3);
+      if (parsed.category === "scam" || parsed.category === "fraud") { 
+        indicators.push(`🚨 AI Category: ${parsed.category.toUpperCase()} detected`); 
+        weights.push(25); 
+      } else if (parsed.category === "safe" && providerStatus === "valid") { 
+        indicators.push(`✅ AI Category: UPI ID appears legitimate`); 
+        weights.push(-10); 
+      }
+    } catch { 
+      indicators.push("⚠️ AI analysis unavailable — pattern engine used"); 
+    }
+
+    const score = Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
+    const level = score>=75?"critical":score>=50?"high":score>=25?"medium":"low";
+    
+    return { 
+      score, level, indicators: indicators.length ? indicators : ["No suspicious patterns detected"], 
+      recommendation: score>=75 
+        ? "⚠️ Do NOT send money. This UPI ID matches multiple fraud patterns. Report to cybercrime.gov.in and your bank." 
+        : score>=50 
+        ? "Exercise extreme caution. Verify this UPI ID directly with recipient over a trusted channel before any payment." 
+        : score>=25 
+        ? "Some indicators found. Double-check recipient identity before proceeding with payment." 
+        : "No major concerns. Still verify recipient independently as good practice." 
+    };
   },
 
   // ─── UPGRADED PHONE SCANNER with NumVerify ───────────────────────────────
