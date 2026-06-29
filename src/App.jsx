@@ -429,7 +429,7 @@ const RISK_ENGINE = {
     };
   },
 
-  async emailFull(raw) {
+    async emailFull(raw) {
     const email = raw.trim().toLowerCase();
     const [localPart, domainPart] = email.split("@");
     const step = (id, label, status, detail) => ({ id, label, status, detail });
@@ -459,28 +459,115 @@ const RISK_ENGINE = {
       }
     }
 
-    if (DB.emailWhitelist.has(email)) {
-      steps.push(step(2, "Reputation Database", "pass", "Found in trusted whitelist"));
+    // ── NEW STEP: Typosquatting Detection (runs BEFORE whitelist/blacklist) ──
+    // This catches lookalike domains like "gnail.com", "gmial.com", "gmai1.com"
+    // that mimic trusted providers like gmail.com, before they can be treated
+    // as "unknown but harmless" by the rest of the pipeline.
+    let typosquatMatch = null;
+    let typosquatDistance = null;
+    if (syntaxOk) {
+      function levenshtein(a, b) {
+        const dp = Array.from({ length: a.length + 1 }, (_, i) =>
+          Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+        );
+        for (let i = 1; i <= a.length; i++)
+          for (let j = 1; j <= b.length; j++)
+            dp[i][j] = a[i - 1] === b[j - 1]
+              ? dp[i - 1][j - 1]
+              : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        return dp[a.length][b.length];
+      }
+
+      // Common confusable substitutions scammers use (rn->m, 0->o, 1->l/i, etc.)
+      function normalizeConfusables(s) {
+        return s
+          .replace(/rn/g, "m")
+          .replace(/vv/g, "w")
+          .replace(/0/g, "o")
+          .replace(/1/g, "l")
+          .replace(/5/g, "s")
+          .replace(/3/g, "e");
+      }
+
+      const popularDomains = [
+        "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "rediffmail.com",
+        "ymail.com", "icloud.com", "protonmail.com", "live.com", "aol.com",
+        "sbi.co.in", "hdfcbank.com", "icicibank.com", "axisbank.com",
+        "paytm.com", "npci.org.in", "amazon.com", "amazon.in",
+      ];
+
+      for (const popular of popularDomains) {
+        if (domainPart === popular) break; // exact match, not a typosquat
+
+        const dist = levenshtein(domainPart, popular);
+        const normDist = levenshtein(normalizeConfusables(domainPart), normalizeConfusables(popular));
+
+        // Catches 1-2 character edits (gnail.com vs gmail.com = distance 1)
+        // and confusable-character tricks (rnail.com vs mail.com style tricks)
+        if ((dist > 0 && dist <= 2) || (normDist === 0 && domainPart !== popular)) {
+          typosquatMatch = popular;
+          typosquatDistance = dist;
+          break;
+        }
+      }
+
+      if (typosquatMatch) {
+        steps.push(step(
+          2,
+          "Typosquatting Detection",
+          "fail",
+          `🚨 "${domainPart}" is ${typosquatDistance} character(s) away from trusted domain "${typosquatMatch}" — likely impersonation`
+        ));
+        riskWeights.push(65);
+        emailStatus = "invalid";
+      } else {
+        steps.push(step(2, "Typosquatting Detection", "pass", "No lookalike-domain pattern detected"));
+      }
+    }
+
+    // ── Whitelist / Blacklist (now correctly skipped/overridden for typosquats) ──
+    if (!typosquatMatch && DB.emailWhitelist.has(email)) {
+      steps.push(step(3, "Reputation Database", "pass", "Found in trusted whitelist"));
       const score = Math.floor(Math.random() * 12) + 2;
       return { score, confidence: 96, level: "low", emailStatus: "verified", structuralFlag: "✅ Whitelist Match", steps, indicators: ["Whitelisted trusted sender"], recommendation: "This is a verified, trusted email address. Safe to interact with." };
     }
     if (DB.emailBlacklist.has(email)) {
-      steps.push(step(2, "Reputation Database", "fail", "🚨 Found in scam/phishing blacklist"));
+      steps.push(step(3, "Reputation Database", "fail", "🚨 Found in scam/phishing blacklist"));
       const score = 95 + Math.floor(Math.random() * 5);
       return { score, confidence: 99, level: "critical", emailStatus: "invalid", structuralFlag: "🚨 Blacklist Match", steps, indicators: ["Known scam/phishing address"], recommendation: "Do NOT interact. This is a confirmed phishing/scam address. Block and report immediately." };
     }
-    steps.push(step(2, "Reputation Database", "pass", "Not found in local blacklist/whitelist"));
+
+    // If typosquat was detected, short-circuit here with a critical result —
+    // no need to keep running MX/SMTP checks, since a lookalike domain having
+    // valid DNS does NOT make it safe (scammers run real mail servers too).
+    if (typosquatMatch) {
+      return {
+        score: 88,
+        confidence: 95,
+        level: "critical",
+        emailStatus: "invalid",
+        structuralFlag: "🚨 Typosquat Detected",
+        steps,
+        indicators: [
+          `🚨 Typosquatting detected — "${domainPart}" mimics trusted domain "${typosquatMatch}"`,
+          "⚠️ This domain having a valid mail server does NOT make it safe — scammers run real mail infrastructure too",
+        ],
+        recommendation: `🚨 Do NOT trust this email. "${domainPart}" is a lookalike of "${typosquatMatch}" — a classic phishing technique. Verify the sender through an official channel before taking any action.`,
+      };
+    }
+
+    steps.push(step(3, "Reputation Database", "pass", "Not found in local blacklist/whitelist"));
 
     if (!syntaxOk) {
       return { score: Math.min(riskWeights.reduce((a, b) => a + b, 0), 100), confidence: 10, level: "critical", emailStatus: "invalid", structuralFlag: "❌ Invalid Syntax", steps, indicators: ["RFC syntax validation failed"], recommendation: "This is not a valid email address. Double-check for typos." };
     }
 
     if (DB.disposableEmailProviders.has(domainPart)) {
-      steps.push(step(3, "Disposable Email Detection", "fail", "Known temporary/disposable email provider"));
+      steps.push(step(4, "Disposable Email Detection", "fail", "Known temporary/disposable email provider"));
       riskWeights.push(50);
       emailStatus = "invalid";
     } else {
-      steps.push(step(3, "Disposable Email Detection", "pass", "Not a known disposable email provider"));
+      steps.push(step(4, "Disposable Email Detection", "pass", "Not a known disposable email provider"));
     }
 
     let mxData = null;
@@ -492,37 +579,37 @@ const RISK_ENGINE = {
       });
       mxData = await mxRes.json();
       if (mxData.hasMX === true) {
-        steps.push(step(4, "MX Record Check (Real DNS)", "pass",
+        steps.push(step(5, "MX Record Check (Real DNS)", "pass",
           `✅ ${mxData.mxCount} MX record(s) found — Primary: ${mxData.topMX}`));
       } else if (mxData.error === "ENODATA" || mxData.error === "ENOTFOUND") {
-        steps.push(step(4, "MX Record Check (Real DNS)", "fail",
+        steps.push(step(5, "MX Record Check (Real DNS)", "fail",
           "🚨 No MX records — domain cannot receive email"));
         riskWeights.push(60);
         emailStatus = "invalid";
       } else {
-        steps.push(step(4, "MX Record Check (Real DNS)", "warn",
+        steps.push(step(5, "MX Record Check (Real DNS)", "warn",
           `Unable to verify MX (${mxData.error || "unknown"})`));
         riskWeights.push(10);
         if (emailStatus === "verified") emailStatus = "unable";
       }
     } catch {
-      steps.push(step(4, "MX Record Check (Real DNS)", "warn", "MX check temporarily unavailable"));
+      steps.push(step(5, "MX Record Check (Real DNS)", "warn", "MX check temporarily unavailable"));
       riskWeights.push(8);
       if (emailStatus === "verified") emailStatus = "unable";
     }
 
     const bigProviders = ["gmail.com","yahoo.com","hotmail.com","outlook.com","icloud.com","rediffmail.com"];
     if (emailStatus === "invalid") {
-      steps.push(step(5, "SMTP Mailbox Verification", "skip", "Skipped — domain/MX invalid"));
+      steps.push(step(6, "SMTP Mailbox Verification", "skip", "Skipped — domain/MX invalid"));
     } else if (bigProviders.includes(domainPart)) {
-      steps.push(step(5, "SMTP Mailbox Verification", "warn", `${domainPart} blocks SMTP probing`));
+      steps.push(step(6, "SMTP Mailbox Verification", "warn", `${domainPart} blocks SMTP probing`));
       if (emailStatus === "verified") emailStatus = "unable";
     } else {
-      steps.push(step(5, "SMTP Mailbox Verification", "warn", "Browser environment — real SMTP probe not possible"));
+      steps.push(step(6, "SMTP Mailbox Verification", "warn", "Browser environment — real SMTP probe not possible"));
       if (emailStatus === "verified") emailStatus = "unable";
     }
 
-    steps.push(step(6, "Catch-all Domain Check", "pass", "No catch-all configuration detected"));
+    steps.push(step(7, "Catch-all Domain Check", "pass", "No catch-all configuration detected"));
 
     const indicators = [];
     const tld = domainPart.split(".").pop();
@@ -562,6 +649,7 @@ const RISK_ENGINE = {
         : "Email appears legitimate. Always verify sender before sharing sensitive information.",
     };
   },
+
 
   async email(raw) {
     const addr = raw.trim().toLowerCase();
