@@ -1015,6 +1015,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
         </div>
       )}
     </div>
+    </div>
   );
 }
 
