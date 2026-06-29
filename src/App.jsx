@@ -1064,7 +1064,6 @@ function useScanHistory() {
   }
   return { history, addScan, deleteScan, clearHistory };
 }
-}
 
 function HistoryPage({ history, deleteScan, clearHistory }) {
   const lc = { critical:C.danger, high:"#FF7A00", medium:C.warning, low:C.success };
