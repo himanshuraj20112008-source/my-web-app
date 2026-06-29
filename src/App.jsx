@@ -937,6 +937,60 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
               </div>
             </div>
             {tab==="url"&&result.gsbBadge&&<GSBBadge gsbBadge={result.gsbBadge}/>}
+            {tab==="domain" && result?.realtimeData && (
+  <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+    {/* VirusTotal Card */}
+    {result.realtimeData.virusTotal?.available && (
+      <div style={{padding:"12px 14px",borderRadius:10,background:result.realtimeData.virusTotal.malicious>0?"rgba(255,77,79,0.09)":"rgba(0,200,83,0.07)",border:`1px solid ${result.realtimeData.virusTotal.malicious>0?"rgba(255,77,79,0.35)":"rgba(0,200,83,0.3)"}`}}>
+        <div style={{fontWeight:700,fontSize:13,color:result.realtimeData.virusTotal.malicious>0?C.danger:C.success,marginBottom:8}}>
+          🛡️ VirusTotal — {result.realtimeData.virusTotal.malicious}/{result.realtimeData.virusTotal.total} engines flagged
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+          {[["🔴","Malicious",result.realtimeData.virusTotal.malicious,C.danger],["🟠","Suspicious",result.realtimeData.virusTotal.suspicious,"#FF7A00"],["🟢","Harmless",result.realtimeData.virusTotal.harmless,C.success],["⚪","Undetected",result.realtimeData.virusTotal.undetected,C.muted]].map(([icon,label,val,color])=>(
+            <div key={label} style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"8px 6px",textAlign:"center"}}>
+              <div style={{fontSize:14}}>{icon}</div>
+              <div style={{fontSize:15,fontWeight:700,color}}>{val}</div>
+              <div style={{fontSize:9,color:C.muted,marginTop:2}}>{label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{fontSize:10,color:C.muted,marginTop:8}}>🔬 Powered by VirusTotal</div>
+      </div>
+    )}
+    {/* WHOIS Card */}
+    {result.realtimeData.whois?.available && (
+      <div style={{padding:"12px 14px",borderRadius:10,background:"rgba(91,91,255,0.07)",border:"1px solid rgba(91,91,255,0.25)"}}>
+        <div style={{fontWeight:600,fontSize:13,color:C.blue,marginBottom:8}}>📋 WHOIS — Domain Registration</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+          {[["📅 Registered",result.realtimeData.whois.registered||"Unknown"],["🏢 Registrar",result.realtimeData.whois.registrar?.slice(0,22)||"Unknown"],["⏳ Expires",result.realtimeData.whois.expires||"Unknown"],["🕐 Age",result.realtimeData.whois.ageLabel||"Unknown"]].map(([label,val])=>(
+            <div key={label} style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"8px 10px"}}>
+              <div style={{fontSize:10,color:C.muted}}>{label}</div>
+              <div style={{fontSize:11,fontWeight:600,color:C.text,marginTop:2}}>{val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+    {/* SSL Card */}
+    {result.realtimeData.ssl?.available && (
+      <div style={{padding:"12px 14px",borderRadius:10,background:result.realtimeData.ssl.hasSSL&&!result.realtimeData.ssl.isExpired?"rgba(0,200,83,0.07)":"rgba(255,77,79,0.08)",border:`1px solid ${result.realtimeData.ssl.hasSSL&&!result.realtimeData.ssl.isExpired?"rgba(0,200,83,0.3)":"rgba(255,77,79,0.3)"}`}}>
+        <div style={{fontWeight:600,fontSize:13,color:result.realtimeData.ssl.hasSSL&&!result.realtimeData.ssl.isExpired?C.success:C.danger,marginBottom:8}}>
+          🔒 SSL Certificate — {result.realtimeData.ssl.hasSSL?(result.realtimeData.ssl.isExpired?"EXPIRED":"Valid"):("Not Found")}
+        </div>
+        {result.realtimeData.ssl.hasSSL && (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+            {[["🏛️ Issuer",result.realtimeData.ssl.issuer?.slice(0,20)||"Unknown"],["📅 Valid Until",result.realtimeData.ssl.validTo||"Unknown"],["⏳ Days Left",result.realtimeData.ssl.daysLeft+"d" ||"?"],["🔐 Self-Signed",result.realtimeData.ssl.isSelfSigned?"Yes ⚠️":"No ✅"]].map(([label,val])=>(
+              <div key={label} style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"8px 10px"}}>
+                <div style={{fontSize:10,color:C.muted}}>{label}</div>
+                <div style={{fontSize:11,fontWeight:600,color:C.text,marginTop:2}}>{val}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
             {tab==="phone"&&<NumVerifyCard data={result.numVerifyData}/>}
           </div>
 
