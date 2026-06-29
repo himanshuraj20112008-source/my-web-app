@@ -842,7 +842,68 @@ function AIThreatExplanation({ explanation, loading }) {
     </div>
   );
 }
+// ─── SCAN HISTORY ─────────────────────────────────────────────────────────────
+function useScanHistory() {
+  const [history, setHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("sentinelx_history") || "[]"); }
+    catch { return []; }
+  });
+  function addScan(type, input, score, level) {
+    const entry = { id: Date.now(), type, input: input.slice(0,60), score, level, time: new Date().toLocaleString("en-IN") };
+    setHistory(prev => {
+      const updated = [entry, ...prev].slice(0, 50);
+      localStorage.setItem("sentinelx_history", JSON.stringify(updated));
+      return updated;
+    });
+  }
+  function clearHistory() {
+    localStorage.removeItem("sentinelx_history");
+    setHistory([]);
+  }
+  return { history, addScan, clearHistory };
+}
 
+function HistoryPage({ history, clearHistory }) {
+  const lc = { critical:C.danger, high:"#FF7A00", medium:C.warning, low:C.success };
+  const icons = { upi:"💳", url:"🔗", phone:"📞", email:"📧", sms:"💬", domain:"🌐" };
+  return (
+    <div className="fu" style={{padding:"22px 18px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+        <div>
+          <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>🕐 Scan History</h2>
+          <p style={{color:C.muted,fontSize:12}}>Your last {history.length} scans</p>
+        </div>
+        {history.length>0 && (
+          <button className="btn-ghost" style={{fontSize:11,padding:"6px 14px"}} onClick={clearHistory}>
+            🗑️ Clear All
+          </button>
+        )}
+      </div>
+      {history.length===0 ? (
+        <div className="glass" style={{padding:40,textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>🔍</div>
+          <div style={{color:C.muted,fontSize:13}}>No scans yet — run your first analysis!</div>
+        </div>
+      ) : (
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {history.map(h=>(
+            <div key={h.id} className="glass" style={{padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
+              <span style={{fontSize:20,flexShrink:0}}>{icons[h.type]||"🔍"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h.input}</div>
+                <div style={{fontSize:10,color:C.muted,marginTop:3}}>{h.time}</div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontSize:14,fontWeight:700,color:lc[h.level]}}>{h.score}</div>
+                <div style={{fontSize:9,color:lc[h.level],fontWeight:600,textTransform:"uppercase"}}>{h.level}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 const SCAN_TYPES = [
   {id:"upi",label:"UPI ID",icon:"💳",ph:"merchant@paytm"},
   {id:"url",label:"URL",icon:"🔗",ph:"https://example.com"},
