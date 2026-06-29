@@ -886,7 +886,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
             {t.icon} {t.label}
           </button>
         ))}
-      </div>
+      </button>
       <div className="glass" style={{padding:18,marginBottom:14}}>
         <div style={{fontSize:12,color:C.muted,marginBottom:8}}>Enter {cur.label} to analyze:</div>
         {cur.big?(
