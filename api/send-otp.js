@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     // Rate limit: check only OTPs that were successfully created in last 5 minutes
     const cooldownAgo = new Date(Date.now() - 60 * 1000).toISOString();
     const recentRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/otp_codes?email=eq.${encodeURIComponent(emailNorm)}&created_at=gte.${fiveMinAgo}&select=id&order=created_at.desc&limit=1`,
+     `${SUPABASE_URL}/rest/v1/otp_codes?email=eq.${encodeURIComponent(emailNorm)}&created_at=gte.${cooldownAgo}&select=id&order=created_at.desc&limit=1`,
       { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
     );
     const recent = await recentRes.json();
