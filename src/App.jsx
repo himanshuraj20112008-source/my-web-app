@@ -1896,6 +1896,7 @@ function AuthPage({ onLogin }) {
     return `${m}:${sec.toString().padStart(2, "0")}`;
   }
 
+  // Signup — no OTP, account created and logged in directly
   async function handleSignup() {
     setError("");
     if (!name.trim() || !designation || !email.trim() || !mobile.trim()) {
@@ -1913,13 +1914,14 @@ function AuthPage({ onLogin }) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Signup failed"); setLoading(false); return; }
-      await sendOtp();
+      onLogin(data.user);
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);
     }
   }
 
+  // Login — sends OTP
   async function sendOtp() {
     setError("");
     setLoading(true);
@@ -1930,7 +1932,15 @@ function AuthPage({ onLogin }) {
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Could not send OTP"); setLoading(false); return; }
+      if (!res.ok) {
+        setError(data.error || "Could not send OTP");
+        if (res.status === 429) {
+          setStep("otp");
+          setCooldown(300);
+        }
+        setLoading(false);
+        return;
+      }
       setStep("otp");
       setCooldown(300);
     } catch {
@@ -2020,7 +2030,7 @@ function AuthPage({ onLogin }) {
             {error && <div style={{fontSize:12,color:C.danger,marginBottom:12,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>}
 
             <button className="btn-prime" disabled={loading} onClick={mode==="signup"?handleSignup:handleLoginStart} style={{width:"100%",padding:"12px",fontSize:13}}>
-              {loading ? "⏳ Please wait…" : mode==="signup" ? "Sign Up & Send OTP" : "Send OTP"}
+              {loading ? "⏳ Please wait…" : mode==="signup" ? "Create Account" : "Send OTP"}
             </button>
           </>
         )}
@@ -2035,18 +2045,18 @@ function AuthPage({ onLogin }) {
 
             {error && <div style={{fontSize:12,color:C.danger,marginBottom:12,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>}
 
-            <button className="btn-prime" disabled={loading||otp.length<6} onClick={handleVerifyOtp} style={{width:"100%",padding:"12px",fontSize:13,marginBottom:10}}>
+            <button className="btn-prime" disabled={loading||otp.length<6} onClick={handleVerifyOtp} style={{width:"100%",padding:"12px",fontSize:13,marginBottom:14}}>
               {loading ? "⏳ Verifying…" : "Verify & Continue"}
             </button>
 
-            <div style={{textAlign:"center",fontSize:12,color:C.muted}}>
+            <div style={{textAlign:"center",fontSize:12,color:C.muted,padding:"10px",background:"rgba(255,255,255,0.03)",borderRadius:8}}>
               {cooldown > 0 ? (
-                <>Resend OTP in <span className="mono" style={{color:C.cyan}}>{fmtCooldown(cooldown)}</span></>
+                <>⏱️ Resend OTP available in <span className="mono" style={{color:C.cyan,fontWeight:700}}>{fmtCooldown(cooldown)}</span></>
               ) : (
-                <button onClick={sendOtp} disabled={loading} style={{background:"none",border:"none",color:C.cyan,cursor:"pointer",fontSize:12,fontFamily:"Inter,sans-serif",textDecoration:"underline"}}>Resend OTP</button>
+                <button onClick={sendOtp} disabled={loading} style={{background:"none",border:"none",color:C.cyan,cursor:"pointer",fontSize:12,fontFamily:"Inter,sans-serif",textDecoration:"underline",fontWeight:600}}>🔄 Resend OTP</button>
               )}
             </div>
-            <button onClick={()=>{setStep("form");setOtp("");setError("")}} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:11,fontFamily:"Inter,sans-serif"}}>← Change email</button>
+            <button onClick={()=>{setStep("form");setOtp("");setError("");setCooldown(0)}} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:11,fontFamily:"Inter,sans-serif"}}>← Change email</button>
           </>
         )}
       </div>
