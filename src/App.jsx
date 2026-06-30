@@ -759,6 +759,98 @@ const RISK_ENGINE = {
         : "Email appears legitimate. Always verify sender before sharing sensitive information."
     };
   },
+  async url(raw) {
+    const rawUrl = raw.trim();
+    const fullUrl = rawUrl.startsWith("http") ? rawUrl : "https://" + rawUrl;
+    const domain = rawUrl.replace(/^https?:\/\//, "").split("/")[0].toLowerCase();
+    const indicators = [], weights = [];
+    let gsbBadge = null;
+
+    // ── 1. Protocol check ───────────────────────────────────────
+    if (rawUrl.startsWith("http://")) {
+      indicators.push("⚠️ Insecure HTTP — no encryption (not HTTPS)");
+      weights.push(20);
+    }
+
+    // ── 2. Shortened URL detection ──────────────────────────────
+    const shorteners = ["bit.ly","tinyurl.com","t.co","goo.gl","ow.ly","is.gd","buff.ly","rebrand.ly","cutt.ly","shorturl.at"];
+    if (shorteners.some(s => domain.includes(s))) {
+      indicators.push("🚨 Shortened URL — real destination is hidden, common in phishing");
+      weights.push(40);
+    }
+
+    // ── 3. Suspicious keywords in URL ───────────────────────────
+    const kws = DB.suspiciousKeywords.url.filter(k => rawUrl.toLowerCase().includes(k));
+    if (kws.length) {
+      indicators.push(`Suspicious keywords in URL: ${kws.slice(0,4).join(", ")}`);
+      weights.push(kws.length * 14);
+    }
+
+    // ── 4. Suspicious TLD ────────────────────────────────────────
+    const tld = "." + domain.split(".").pop();
+    if (DB.suspiciousTLDs.has(tld)) {
+      indicators.push(`Suspicious TLD (${tld})`);
+      weights.push(22);
+    }
+
+    // ── 5. Brand impersonation ──────────────────────────────────
+    const simDomains = ["paypal","amazon","flipkart","sbi","hdfc","icici","google","microsoft","paytm","phonepe"];
+    const hit = simDomains.find(s => domain.includes(s) && !domain.endsWith(`${s}.com`) && !domain.endsWith(`${s}.in`));
+    if (hit) {
+      indicators.push(`🚨 Brand impersonation: mimics "${hit}"`);
+      weights.push(45);
+    }
+
+    // ── 6. Excessive hyphens / digits / length ──────────────────
+    if ((domain.match(/-/g) || []).length > 2) {
+      indicators.push("Multiple hyphens — common phishing pattern");
+      weights.push(18);
+    }
+    if (domain.length > 35) {
+      indicators.push("Unusually long URL/domain");
+      weights.push(15);
+    }
+
+    // ── 7. IP address as domain ──────────────────────────────────
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(domain)) {
+      indicators.push("🚨 Raw IP address used instead of domain name");
+      weights.push(50);
+    }
+
+    // ── 8. Google Safe Browsing check ───────────────────────────
+    try {
+      const gsb = await callGoogleSafeBrowsing(fullUrl);
+      if (gsb.status === "danger") {
+        indicators.push(`🚨 Google Safe Browsing: Flagged as ${gsb.threats?.join(", ") || "dangerous"}`);
+        weights.push(85);
+        gsbBadge = "danger";
+      } else if (gsb.status === "safe") {
+        indicators.push("✅ Google Safe Browsing: No threats detected");
+        weights.push(-10);
+        gsbBadge = "safe";
+      } else {
+        gsbBadge = "unavailable";
+      }
+    } catch {
+      indicators.push("⚠️ Google Safe Browsing check unavailable");
+      gsbBadge = "unavailable";
+    }
+
+    const score = Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
+    const level = score>=75?"critical":score>=50?"high":score>=25?"medium":"low";
+
+    return {
+      score, level, gsbBadge,
+      indicators: indicators.length ? indicators : ["No suspicious patterns detected"],
+      recommendation: score>=75
+        ? "🚨 Do NOT visit this URL. Strong phishing/malware indicators found. Report and block."
+        : score>=50
+        ? "Suspicious URL. Avoid entering any personal or payment information."
+        : score>=25
+        ? "Some concerns found. Verify the destination before clicking."
+        : "URL appears low-risk. Always check for HTTPS and verify the domain independently."
+    };
+  },
   async sms(raw) {
     const text = raw.trim();
     const textLower = text.toLowerCase();
