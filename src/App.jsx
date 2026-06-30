@@ -2045,7 +2045,11 @@ function AuthPage({ onLogin }) {
   );
 }
 const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",icon:"🤖"},{id:"Dashboard",icon:"📊"},{id:"Learn",icon:"🎓"},{id:"History",icon:"🕐"}];
-
+if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
 export default function SentinelX() {
 const [page,setPage]=useState("Home");
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
