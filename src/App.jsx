@@ -1851,6 +1851,208 @@ function LearnPage() {
     </div>
   );
 }
+// ─── AUTH SYSTEM ──────────────────────────────────────────────────────────────
+function useAuth() {
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("sentinelx_user") || "null"); }
+    catch { return null; }
+  });
+  function login(userData) {
+    localStorage.setItem("sentinelx_user", JSON.stringify(userData));
+    setUser(userData);
+  }
+  function logout() {
+    localStorage.removeItem("sentinelx_user");
+    setUser(null);
+  }
+  return { user, login, logout };
+}
+
+function AuthPage({ onLogin }) {
+  const [mode, setMode] = useState("login"); // login | signup
+  const [step, setStep] = useState("form"); // form | otp
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+
+  // signup fields
+  const [name, setName] = useState("");
+  const [designation, setDesignation] = useState("");
+  const [designationOther, setDesignationOther] = useState("");
+  const [mobile, setMobile] = useState("");
+
+  // shared
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
+
+  function fmtCooldown(s) {
+    const m = Math.floor(s / 60), sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  async function handleSignup() {
+    setError("");
+    if (!name.trim() || !designation || !email.trim() || !mobile.trim()) {
+      setError("Please fill all fields."); return;
+    }
+    if (designation === "other" && !designationOther.trim()) {
+      setError("Please specify your designation."); return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, designation, designationOther, email, mobile }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Signup failed"); setLoading(false); return; }
+      await sendOtp();
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+    }
+  }
+
+  async function sendOtp() {
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Could not send OTP"); setLoading(false); return; }
+      setStep("otp");
+      setCooldown(300);
+    } catch {
+      setError("Network error. Please try again.");
+    }
+    setLoading(false);
+  }
+
+  async function handleLoginStart() {
+    setError("");
+    if (!email.trim()) { setError("Please enter your email."); return; }
+    await sendOtp();
+  }
+
+  async function handleVerifyOtp() {
+    setError("");
+    if (!otp.trim()) { setError("Please enter the OTP."); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Verification failed"); setLoading(false); return; }
+      onLogin(data.user);
+    } catch {
+      setError("Network error. Please try again.");
+    }
+    setLoading(false);
+  }
+
+  const designations = [
+    { id: "student", label: "🎓 Student" },
+    { id: "educator", label: "👩‍🏫 Educator" },
+    { id: "professional", label: "💼 Professional" },
+    { id: "other", label: "📌 Other" },
+  ];
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <style>{css}</style>
+      <div className="glass fu" style={{maxWidth:420,width:"100%",padding:28}}>
+        <div style={{textAlign:"center",marginBottom:22}}>
+          <div style={{display:"inline-flex",marginBottom:10}}><Shield size={42}/></div>
+          <div style={{fontWeight:700,fontSize:18,background:`linear-gradient(135deg,${C.cyan},${C.blue})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>SentinelX</div>
+          <div style={{fontSize:10,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginTop:2}}>Cyber Shield AI</div>
+        </div>
+
+        {step === "form" && (
+          <>
+            <div style={{display:"flex",gap:6,marginBottom:20,background:"rgba(255,255,255,0.03)",padding:4,borderRadius:10}}>
+              <button onClick={()=>{setMode("login");setError("")}} style={{flex:1,padding:"9px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:"Inter,sans-serif",background:mode==="login"?`linear-gradient(135deg,${C.cyan},${C.blue})`:"transparent",color:mode==="login"?"#000":C.muted}}>Login</button>
+              <button onClick={()=>{setMode("signup");setError("")}} style={{flex:1,padding:"9px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,fontFamily:"Inter,sans-serif",background:mode==="signup"?`linear-gradient(135deg,${C.cyan},${C.blue})`:"transparent",color:mode==="signup"?"#000":C.muted}}>Sign Up</button>
+            </div>
+
+            {mode === "signup" && (
+              <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:14}}>
+                <div>
+                  <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Full Name</div>
+                  <input className="ifield" value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" style={{padding:"10px 13px",fontSize:13}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:11,color:C.muted,marginBottom:6}}>I am a...</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    {designations.map(d=>(
+                      <button key={d.id} onClick={()=>setDesignation(d.id)} style={{padding:"9px",borderRadius:8,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif",background:designation===d.id?"rgba(0,212,255,0.12)":"rgba(255,255,255,0.03)",border:`1px solid ${designation===d.id?C.cyan:"rgba(255,255,255,0.08)"}`,color:designation===d.id?C.cyan:C.text}}>{d.label}</button>
+                    ))}
+                  </div>
+                </div>
+                {designation === "other" && (
+                  <input className="ifield" value={designationOther} onChange={e=>setDesignationOther(e.target.value)} placeholder="Please specify" style={{padding:"10px 13px",fontSize:13}}/>
+                )}
+                <div>
+                  <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Mobile Number</div>
+                  <input className="ifield" value={mobile} onChange={e=>setMobile(e.target.value)} placeholder="+91 98765 43210" style={{padding:"10px 13px",fontSize:13}}/>
+                </div>
+              </div>
+            )}
+
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Email Address</div>
+              <input className="ifield" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" type="email" style={{padding:"10px 13px",fontSize:13}}/>
+            </div>
+
+            {error && <div style={{fontSize:12,color:C.danger,marginBottom:12,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>}
+
+            <button className="btn-prime" disabled={loading} onClick={mode==="signup"?handleSignup:handleLoginStart} style={{width:"100%",padding:"12px",fontSize:13}}>
+              {loading ? "⏳ Please wait…" : mode==="signup" ? "Sign Up & Send OTP" : "Send OTP"}
+            </button>
+          </>
+        )}
+
+        {step === "otp" && (
+          <>
+            <div style={{textAlign:"center",marginBottom:18}}>
+              <div style={{fontSize:13,color:C.muted}}>We've sent a 6-digit code to</div>
+              <div style={{fontSize:14,fontWeight:600,color:C.cyan,marginTop:3}}>{email}</div>
+            </div>
+            <input className="ifield mono" value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="000000" style={{padding:"12px 13px",fontSize:20,textAlign:"center",letterSpacing:8,marginBottom:14}}/>
+
+            {error && <div style={{fontSize:12,color:C.danger,marginBottom:12,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>}
+
+            <button className="btn-prime" disabled={loading||otp.length<6} onClick={handleVerifyOtp} style={{width:"100%",padding:"12px",fontSize:13,marginBottom:10}}>
+              {loading ? "⏳ Verifying…" : "Verify & Continue"}
+            </button>
+
+            <div style={{textAlign:"center",fontSize:12,color:C.muted}}>
+              {cooldown > 0 ? (
+                <>Resend OTP in <span className="mono" style={{color:C.cyan}}>{fmtCooldown(cooldown)}</span></>
+              ) : (
+                <button onClick={sendOtp} disabled={loading} style={{background:"none",border:"none",color:C.cyan,cursor:"pointer",fontSize:12,fontFamily:"Inter,sans-serif",textDecoration:"underline"}}>Resend OTP</button>
+              )}
+            </div>
+            <button onClick={()=>{setStep("form");setOtp("");setError("")}} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:11,fontFamily:"Inter,sans-serif"}}>← Change email</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",icon:"🤖"},{id:"Dashboard",icon:"📊"},{id:"Learn",icon:"🎓"},{id:"History",icon:"🕐"}];
 
 export default function SentinelX() {
