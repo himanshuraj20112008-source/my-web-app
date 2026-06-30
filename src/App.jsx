@@ -1685,36 +1685,43 @@ function useQuizProgress() {
   return { today, lifetimeScore, saveAnswer, getTopicProgress, todayKey };
 }
 
-function QuizView({ topic, label, onBack, onComplete }) {
+function QuizView({ topic, label, onBack, savedProgress, onAnswer }) {
   const [questions, setQuestions] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [qIdx, setQIdx] = useState(0);
-  const [answered, setAnswered] = useState(null);
-  const [score, setScore] = useState(0);
   const [error, setError] = useState(null);
+
+  const savedAnswers = savedProgress.answers || {};
+  const totalAnswered = Object.keys(savedAnswers).length;
+
+  const [qIdx, setQIdx] = useState(0);
 
   useEffect(() => {
     fetch(`/api/daily-quiz?topic=${topic}`)
       .then(r => r.json())
       .then(d => {
-        if (d.questions && d.questions.length) setQuestions(d.questions);
-        else setError("No questions returned");
+        if (d.questions && d.questions.length) {
+          setQuestions(d.questions);
+          // Resume from first unanswered question
+          const firstUnanswered = d.questions.findIndex((_, i) => savedAnswers[i] === undefined);
+          setQIdx(firstUnanswered === -1 ? d.questions.length - 1 : firstUnanswered);
+        } else setError("No questions returned");
         setLoading(false);
       })
       .catch(() => { setError("Failed to load quiz"); setLoading(false); });
   }, [topic]);
 
   function selectAnswer(i) {
-    setAnswered(i);
-    if (i === questions[qIdx].ans) setScore(s => s + 10);
+    if (savedAnswers[qIdx] !== undefined) return; // locked, already answered
+    const isCorrect = i === questions[qIdx].ans;
+    onAnswer(topic, qIdx, i, isCorrect, questions.length);
   }
+
   function next() {
-    if (qIdx + 1 >= questions.length) {
-      onComplete(score + (answered === questions[qIdx].ans ? 0 : 0));
-      return;
-    }
+    if (qIdx + 1 >= questions.length) { onBack(); return; }
     setQIdx(qIdx + 1);
-    setAnswered(null);
+  }
+  function prev() {
+    if (qIdx > 0) setQIdx(qIdx - 1);
   }
 
   if (loading) return (
@@ -1731,21 +1738,35 @@ function QuizView({ topic, label, onBack, onComplete }) {
   );
 
   const q = questions[qIdx];
+  const answered = savedAnswers[qIdx];
+  const isLocked = answered !== undefined;
+  const liveScore = Object.entries(savedAnswers).reduce((s,[idx,ans]) => s + (questions[idx] && ans === questions[idx].ans ? 10 : 0), 0);
+
   return (
     <div className="glass fu" style={{padding:20}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
         <button className="btn-ghost" style={{fontSize:11,padding:"5px 12px"}} onClick={onBack}>← Topics</button>
-        <span style={{fontSize:10,color:C.muted}}>{qIdx+1} / {questions.length} · Score: {score}</span>
+        <span style={{fontSize:10,color:C.muted}}>{qIdx+1} / {questions.length} · Score: {liveScore}</span>
       </div>
+
+      {qIdx > 0 && (
+        <button className="btn-ghost" style={{fontSize:10,padding:"4px 10px",marginBottom:10}} onClick={prev}>← Previous Question</button>
+      )}
+
       <p style={{fontSize:14,fontWeight:500,marginBottom:16,lineHeight:1.6}}>{q.q}</p>
       {q.opts.map((o,i)=>(
-        <button key={i} onClick={()=>selectAnswer(i)} disabled={answered!==null}
-          style={{display:"block",width:"100%",textAlign:"left",padding:"11px 14px",marginBottom:7,borderRadius:9,fontSize:13,cursor:answered===null?"pointer":"default",fontFamily:"Inter,sans-serif",background:answered===null?"rgba(255,255,255,0.04)":i===q.ans?"rgba(0,200,83,0.12)":i===answered?"rgba(255,77,79,0.1)":"rgba(255,255,255,0.03)",border:`1px solid ${answered===null?"rgba(255,255,255,0.08)":i===q.ans?C.success:i===answered?C.danger:"rgba(255,255,255,0.05)"}`,color:answered===null?C.text:i===q.ans?C.success:i===answered?C.danger:C.muted}}>
-          {answered!==null&&i===q.ans?"✅ ":answered!==null&&i===answered?"❌ ":""}{o}
+        <button key={i} onClick={()=>selectAnswer(i)} disabled={isLocked}
+          style={{display:"block",width:"100%",textAlign:"left",padding:"11px 14px",marginBottom:7,borderRadius:9,fontSize:13,cursor:!isLocked?"pointer":"default",fontFamily:"Inter,sans-serif",background:!isLocked?"rgba(255,255,255,0.04)":i===q.ans?"rgba(0,200,83,0.12)":i===answered?"rgba(255,77,79,0.1)":"rgba(255,255,255,0.03)",border:`1px solid ${!isLocked?"rgba(255,255,255,0.08)":i===q.ans?C.success:i===answered?C.danger:"rgba(255,255,255,0.05)"}`,color:!isLocked?C.text:i===q.ans?C.success:i===answered?C.danger:C.muted}}>
+          {isLocked&&i===q.ans?"✅ ":isLocked&&i===answered?"❌ ":""}{o}
         </button>
       ))}
-      {answered!==null&&(
+
+      {isLocked && (
         <div className="fu" style={{marginTop:12,padding:"12px 15px",borderRadius:10,lineHeight:1.65,fontSize:13,background:answered===q.ans?"rgba(0,200,83,0.08)":"rgba(255,77,79,0.08)",border:`1px solid ${answered===q.ans?C.success:C.danger}`,color:C.text}}>
+          <div style={{fontSize:11,fontWeight:600,marginBottom:6,color:C.muted}}>
+            Your answer: <span style={{color:answered===q.ans?C.success:C.danger}}>{q.opts[answered]}</span>
+            {answered!==q.ans && <> · Correct answer: <span style={{color:C.success}}>{q.opts[q.ans]}</span></>}
+          </div>
           {answered===q.ans?"✅ Correct! ":"❌ Not quite — "}{q.explain}
           <div style={{marginTop:10}}>
             <button className="btn-ghost" style={{fontSize:11,padding:"6px 14px"}} onClick={next}>
