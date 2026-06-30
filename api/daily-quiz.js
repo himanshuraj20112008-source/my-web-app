@@ -9,7 +9,12 @@ export default async function handler(req, res) {
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   const today = new Date().toISOString().split("T")[0];
-
+  if (!SUPABASE_URL || !SERVICE_KEY) {
+    return res.status(500).json({ error: "Missing Supabase env vars", SUPABASE_URL: !!SUPABASE_URL, SERVICE_KEY: !!SERVICE_KEY });
+  }
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(500).json({ error: "Missing GROQ_API_KEY env var" });
+  }
   try {
     // Check if today's quiz already exists for this topic
     const checkRes = await fetch(
