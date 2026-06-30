@@ -16,7 +16,6 @@ export default async function handler(req, res) {
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   try {
-    // Check if email already exists
     const checkRes = await fetch(
       `${SUPABASE_URL}/rest/v1/app_users?email=eq.${encodeURIComponent(emailNorm)}&select=id`,
       { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
@@ -26,7 +25,6 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: "This email is already registered. Please login instead." });
     }
 
-    // Create new user
     const createRes = await fetch(`${SUPABASE_URL}/rest/v1/app_users`, {
       method: "POST",
       headers: {
@@ -44,12 +42,12 @@ export default async function handler(req, res) {
       }),
     });
 
-    const text = await createRes.text();
+    const result = await createRes.json();
     if (!createRes.ok) {
-      return res.status(500).json({ error: text });
+      return res.status(500).json({ error: JSON.stringify(result) });
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, user: result[0] });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
