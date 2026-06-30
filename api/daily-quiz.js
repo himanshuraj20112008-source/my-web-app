@@ -28,20 +28,22 @@ export default async function handler(req, res) {
     }
 
     // Generate new questions via Anthropic API
-    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 2000,
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
+            role: "system",
+            content: "You are a cybersecurity quiz generator. Reply ONLY with valid JSON, no markdown, no extra text.",
+          },
+          {
             role: "user",
-            content: `Generate 10 fresh, unique cybersecurity quiz questions about "${topic}" for Indian users. Reply ONLY with a JSON array, no markdown, no extra text, in this exact format:
+            content: `Generate 10 fresh, unique cybersecurity quiz questions about "${topic}" for Indian users. Reply ONLY with a JSON array in this exact format:
 [{"q":"question text","opts":["opt1","opt2","opt3","opt4"],"ans":0,"explain":"why this is correct, 1-2 sentences"}]
 Make questions practical, India-specific where relevant (UPI, Aadhaar, Indian banks), and varied in difficulty.`,
           },
@@ -50,7 +52,7 @@ Make questions practical, India-specific where relevant (UPI, Aadhaar, Indian ba
     });
 
     const aiData = await aiRes.json();
-    const text = aiData.content?.[0]?.text || "[]";
+    const text = aiData.choices?.[0]?.message?.content || "[]";
     const clean = text.replace(/```json|```/g, "").trim();
     const questions = JSON.parse(clean);
 
