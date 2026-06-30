@@ -1781,7 +1781,7 @@ function QuizView({ topic, label, onBack, savedProgress, onAnswer }) {
 
 function LearnPage() {
   const [activeTopic, setActiveTopic] = useState(null);
-  const { today, lifetimeScore, saveTopicScore } = useQuizProgress();
+  const { today, lifetimeScore, saveAnswer, getTopicProgress } = useQuizProgress();
 
   const topics=[
     {id:"phishing",icon:"🎣",t:"Phishing",d:"Fake emails, sites & messages",c:C.danger},
@@ -1794,14 +1794,16 @@ function LearnPage() {
 
   if (activeTopic) {
     const topicMeta = topics.find(t=>t.id===activeTopic);
+    const progress = getTopicProgress(activeTopic);
     return (
       <div className="fu" style={{padding:"22px 18px"}}>
         <h2 style={{fontSize:18,fontWeight:700,marginBottom:14}}>{topicMeta.icon} {topicMeta.t} Quiz</h2>
         <QuizView
           topic={activeTopic}
           label={topicMeta.t}
+          savedProgress={progress}
+          onAnswer={saveAnswer}
           onBack={()=>setActiveTopic(null)}
-          onComplete={(finalScore)=>{ saveTopicScore(activeTopic, finalScore); setActiveTopic(null); }}
         />
       </div>
     );
@@ -1827,15 +1829,16 @@ function LearnPage() {
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10}}>
         {topics.map(t=>{
-          const done = today[t.id];
+          const prog = today[t.id];
+          const answeredCount = prog ? Object.keys(prog.answers||{}).length : 0;
           return (
             <div key={t.id} className="glass" style={{padding:"15px 13px",cursor:"pointer",transition:"all .2s",position:"relative"}}
               onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
               onMouseLeave={e=>e.currentTarget.style.transform=""}
               onClick={()=>setActiveTopic(t.id)}>
-              {done && (
-                <span style={{position:"absolute",top:10,right:10,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,background:"rgba(0,200,83,0.15)",color:C.success}}>
-                  ✓ {done.score}
+              {prog && (
+                <span style={{position:"absolute",top:10,right:10,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,background:prog.completed?"rgba(0,200,83,0.15)":"rgba(255,193,7,0.15)",color:prog.completed?C.success:C.warning}}>
+                  {prog.completed?`✓ ${prog.score}`:`${answeredCount} in progress`}
                 </span>
               )}
               <div style={{fontSize:24,marginBottom:8}}>{t.icon}</div>
