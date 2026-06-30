@@ -1620,17 +1620,7 @@ function DashboardPage() {
           ))}
         </div>
       </div>
-      <div className="glass" style={{padding:18}}>
-        <div style={{fontSize:12,fontWeight:600,color:C.cyan,marginBottom:12}}>🕐 Recent Community Scans</div>
-        {feed.map((s,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<feed.length-1?"1px solid rgba(255,255,255,0.04)":"none"}}>
-            <span style={{fontSize:10,background:"rgba(0,212,255,0.08)",color:C.cyan,padding:"2px 7px",borderRadius:20,fontWeight:600,flexShrink:0}}>{s.type}</span>
-            <span style={{flex:1,fontSize:12,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.val}</span>
-            <span className="mono" style={{fontSize:11,fontWeight:700,color:lc[s.level],flexShrink:0}}>{s.score}</span>
-            <span style={{fontSize:10,color:C.muted,flexShrink:0}}>{s.time}</span>
-          </div>
-        ))}
-      </div>
+     
     </div>
   );
 }
