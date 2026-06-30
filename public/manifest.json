@@ -1,0 +1,24 @@
+{
+  "name": "SentinelX — Cyber Shield AI",
+  "short_name": "SentinelX",
+  "description": "Cyber threat intelligence by Himanshu Raj — scan UPI, URLs, phone numbers, emails & SMS for scams",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080E1C",
+  "theme_color": "#080E1C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
