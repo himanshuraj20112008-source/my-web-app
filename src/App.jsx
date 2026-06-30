@@ -1592,16 +1592,7 @@ function DashboardPage() {
     },16);
     return()=>clearInterval(id);
   },[]);
-  const feed=[
-    {type:"UPI",val:"kyc@sbihelp.net",score:92,level:"critical",time:"1m ago"},
-    {type:"URL",val:"paypal-secure-login.xyz",score:88,level:"critical",time:"4m ago"},
-    {type:"Phone",val:"+91 9876540001",score:55,level:"high",time:"9m ago"},
-    {type:"Email",val:"support@amaz0n.in",score:84,level:"critical",time:"15m ago"},
-    {type:"SMS",val:"You have won ₹5,00,000!…",score:79,level:"critical",time:"22m ago"},
-    {type:"Domain",val:"hdfc-kyc-verify.in",score:91,level:"critical",time:"30m ago"},
-    {type:"URL",val:"github.com/anthropics",score:4,level:"low",time:"38m ago"},
-    {type:"UPI",val:"zomato@icici",score:3,level:"low",time:"52m ago"},
-  ];
+  
   const bars=[62,45,78,55,88,41,66];
   const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const lc={critical:C.danger,high:"#FF7A00",medium:C.warning,low:C.success};
