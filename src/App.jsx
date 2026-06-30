@@ -1552,60 +1552,167 @@ function DashboardPage() {
   );
 }
 
-function LearnPage() {
-  const [answered,setAnswered]=useState(null);
-  const [qIdx,setQIdx]=useState(0);
-  const qs=[
-    {q:"Which of these is a strong sign of a phishing email?",opts:["Sender matches official bank domain","Urgent request to click a link immediately","Professional formatting and grammar","Message confirms your account is safe"],ans:1,explain:"Urgency is the #1 phishing manipulation tactic. Attackers create panic to prevent you from thinking critically."},
-    {q:"A UPI ID 'kyc.update.7849@ybl' asks you to complete urgent KYC. What should you do?",opts:["Pay immediately to avoid account block","Update via your official bank app instead","Share your OTP to verify identity","Click the link they sent"],ans:1,explain:"Banks NEVER ask for KYC via UPI payment requests. Always use your official banking app or visit a branch."},
-    {q:"What makes a domain like 'hdfc-netbanking-kyc.xyz' suspicious?",opts:["It has HDFC in the name","It uses suspicious TLD .xyz and hyphenated brand name","It has many letters","It ends in .xyz"],ans:1,explain:"Legitimate banks use .com or .in. Combining a real brand name with suspicious TLDs and hyphens is a classic phishing pattern."},
-  ];
-  const q=qs[qIdx];
-  function nextQ(){setAnswered(null);setQIdx((qIdx+1)%qs.length);}
-  const topics=[
-    {icon:"🎣",t:"Phishing",d:"Fake emails, sites & messages",c:C.danger},
-    {icon:"💳",t:"UPI Fraud",d:"Fake payment & KYC scams",c:C.warning},
-    {icon:"🔐",t:"Password Safety",d:"Strong passwords & 2FA",c:C.blue},
-    {icon:"📱",t:"Social Engineering",d:"Psychological manipulation",c:C.violet},
-    {icon:"🌐",t:"Safe Browsing",d:"Spotting malicious sites",c:C.success},
-    {icon:"🔒",t:"Digital Privacy",d:"Protecting personal data",c:C.cyan},
-  ];
+function useQuizProgress() {
+  const todayKey = new Date().toISOString().split("T")[0];
+  const [data, setData] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("sentinelx_quiz") || "{}"); }
+    catch { return {}; }
+  });
+  const today = data[todayKey] || {};
+  const lifetimeScore = Object.values(data).reduce((sum, day) =>
+    sum + Object.values(day).reduce((s, t) => s + (t.score || 0), 0), 0);
+  function saveTopicScore(topic, score) {
+    setData(prev => {
+      const updated = { ...prev, [todayKey]: { ...(prev[todayKey] || {}), [topic]: { score, completed: true } } };
+      localStorage.setItem("sentinelx_quiz", JSON.stringify(updated));
+      return updated;
+    });
+  }
+  return { today, lifetimeScore, saveTopicScore, todayKey };
+}
+
+function QuizView({ topic, label, onBack, onComplete }) {
+  const [questions, setQuestions] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [qIdx, setQIdx] = useState(0);
+  const [answered, setAnswered] = useState(null);
+  const [score, setScore] = useState(0);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/daily-quiz?topic=${topic}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.questions && d.questions.length) setQuestions(d.questions);
+        else setError("No questions returned");
+        setLoading(false);
+      })
+      .catch(() => { setError("Failed to load quiz"); setLoading(false); });
+  }, [topic]);
+
+  function selectAnswer(i) {
+    setAnswered(i);
+    if (i === questions[qIdx].ans) setScore(s => s + 10);
+  }
+  function next() {
+    if (qIdx + 1 >= questions.length) {
+      onComplete(score + (answered === questions[qIdx].ans ? 0 : 0));
+      return;
+    }
+    setQIdx(qIdx + 1);
+    setAnswered(null);
+  }
+
+  if (loading) return (
+    <div className="glass" style={{padding:40,textAlign:"center"}}>
+      <div style={{width:36,height:36,border:"3px solid rgba(0,212,255,0.15)",borderTop:`3px solid ${C.cyan}`,borderRadius:"50%",animation:"spin 0.9s linear infinite",margin:"0 auto 14px"}}/>
+      <p style={{color:C.cyan,fontSize:13}}>Loading today's {label} quiz…</p>
+    </div>
+  );
+  if (error || !questions) return (
+    <div className="glass" style={{padding:30,textAlign:"center"}}>
+      <p style={{color:C.danger,fontSize:13,marginBottom:12}}>⚠️ {error || "Could not load quiz"}</p>
+      <button className="btn-ghost" style={{fontSize:12,padding:"8px 16px"}} onClick={onBack}>← Back</button>
+    </div>
+  );
+
+  const q = questions[qIdx];
   return (
-    <div className="fu" style={{padding:"22px 18px"}}>
-      <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>🎓 Cyber Education Hub</h2>
-      <p style={{color:C.muted,fontSize:12,marginBottom:18}}>Build your cyber awareness skills</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10,marginBottom:20}}>
-        {topics.map(t=>(
-          <div key={t.t} className="glass" style={{padding:"15px 13px",cursor:"pointer",transition:"all .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform=""}>
-            <div style={{fontSize:24,marginBottom:8}}>{t.icon}</div>
-            <div style={{fontWeight:600,fontSize:13,color:t.c,marginBottom:4}}>{t.t}</div>
-            <div style={{color:C.muted,fontSize:11,lineHeight:1.5}}>{t.d}</div>
-          </div>
-        ))}
+    <div className="glass fu" style={{padding:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <button className="btn-ghost" style={{fontSize:11,padding:"5px 12px"}} onClick={onBack}>← Topics</button>
+        <span style={{fontSize:10,color:C.muted}}>{qIdx+1} / {questions.length} · Score: {score}</span>
       </div>
-      <div className="glass" style={{padding:20}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-          <div style={{fontSize:12,fontWeight:600,color:C.cyan}}>🧠 Quick Quiz</div>
-          <span style={{fontSize:10,color:C.muted}}>{qIdx+1} / {qs.length}</span>
+      <p style={{fontSize:14,fontWeight:500,marginBottom:16,lineHeight:1.6}}>{q.q}</p>
+      {q.opts.map((o,i)=>(
+        <button key={i} onClick={()=>selectAnswer(i)} disabled={answered!==null}
+          style={{display:"block",width:"100%",textAlign:"left",padding:"11px 14px",marginBottom:7,borderRadius:9,fontSize:13,cursor:answered===null?"pointer":"default",fontFamily:"Inter,sans-serif",background:answered===null?"rgba(255,255,255,0.04)":i===q.ans?"rgba(0,200,83,0.12)":i===answered?"rgba(255,77,79,0.1)":"rgba(255,255,255,0.03)",border:`1px solid ${answered===null?"rgba(255,255,255,0.08)":i===q.ans?C.success:i===answered?C.danger:"rgba(255,255,255,0.05)"}`,color:answered===null?C.text:i===q.ans?C.success:i===answered?C.danger:C.muted}}>
+          {answered!==null&&i===q.ans?"✅ ":answered!==null&&i===answered?"❌ ":""}{o}
+        </button>
+      ))}
+      {answered!==null&&(
+        <div className="fu" style={{marginTop:12,padding:"12px 15px",borderRadius:10,lineHeight:1.65,fontSize:13,background:answered===q.ans?"rgba(0,200,83,0.08)":"rgba(255,77,79,0.08)",border:`1px solid ${answered===q.ans?C.success:C.danger}`,color:C.text}}>
+          {answered===q.ans?"✅ Correct! ":"❌ Not quite — "}{q.explain}
+          <div style={{marginTop:10}}>
+            <button className="btn-ghost" style={{fontSize:11,padding:"6px 14px"}} onClick={next}>
+              {qIdx+1>=questions.length?"Finish Quiz →":"Next Question →"}
+            </button>
+          </div>
         </div>
-        <p style={{fontSize:14,fontWeight:500,marginBottom:16,lineHeight:1.6}}>{q.q}</p>
-        {q.opts.map((o,i)=>(
-          <button key={i} onClick={()=>setAnswered(i)} disabled={answered!==null}
-            style={{display:"block",width:"100%",textAlign:"left",padding:"11px 14px",marginBottom:7,borderRadius:9,fontSize:13,cursor:answered===null?"pointer":"default",fontFamily:"Inter,sans-serif",background:answered===null?"rgba(255,255,255,0.04)":i===q.ans?"rgba(0,200,83,0.12)":i===answered?"rgba(255,77,79,0.1)":"rgba(255,255,255,0.03)",border:`1px solid ${answered===null?"rgba(255,255,255,0.08)":i===q.ans?C.success:i===answered?C.danger:"rgba(255,255,255,0.05)"}`,color:answered===null?C.text:i===q.ans?C.success:i===answered?C.danger:C.muted,transition:"all .2s"}}>
-            {answered!==null&&i===q.ans?"✅ ":answered!==null&&i===answered?"❌ ":""}{o}
-          </button>
-        ))}
-        {answered!==null&&(
-          <div className="fu" style={{marginTop:12,padding:"12px 15px",borderRadius:10,lineHeight:1.65,fontSize:13,background:answered===q.ans?"rgba(0,200,83,0.08)":"rgba(255,77,79,0.08)",border:`1px solid ${answered===q.ans?C.success:C.danger}`,color:C.text}}>
-            {answered===q.ans?"✅ Correct! ":"❌ Not quite — "}{q.explain}
-            <div style={{marginTop:10}}><button className="btn-ghost" style={{fontSize:11,padding:"6px 14px"}} onClick={nextQ}>Next Question →</button></div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
 
+function LearnPage() {
+  const [activeTopic, setActiveTopic] = useState(null);
+  const { today, lifetimeScore, saveTopicScore } = useQuizProgress();
+
+  const topics=[
+    {id:"phishing",icon:"🎣",t:"Phishing",d:"Fake emails, sites & messages",c:C.danger},
+    {id:"upi_fraud",icon:"💳",t:"UPI Fraud",d:"Fake payment & KYC scams",c:C.warning},
+    {id:"password_safety",icon:"🔐",t:"Password Safety",d:"Strong passwords & 2FA",c:C.blue},
+    {id:"social_engineering",icon:"📱",t:"Social Engineering",d:"Psychological manipulation",c:C.violet},
+    {id:"safe_browsing",icon:"🌐",t:"Safe Browsing",d:"Spotting malicious sites",c:C.success},
+    {id:"digital_privacy",icon:"🔒",t:"Digital Privacy",d:"Protecting personal data",c:C.cyan},
+  ];
+
+  if (activeTopic) {
+    const topicMeta = topics.find(t=>t.id===activeTopic);
+    return (
+      <div className="fu" style={{padding:"22px 18px"}}>
+        <h2 style={{fontSize:18,fontWeight:700,marginBottom:14}}>{topicMeta.icon} {topicMeta.t} Quiz</h2>
+        <QuizView
+          topic={activeTopic}
+          label={topicMeta.t}
+          onBack={()=>setActiveTopic(null)}
+          onComplete={(finalScore)=>{ saveTopicScore(activeTopic, finalScore); setActiveTopic(null); }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="fu" style={{padding:"22px 18px"}}>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>🎓 Cyber Education Hub</h2>
+      <p style={{color:C.muted,fontSize:12,marginBottom:14}}>Fresh quiz every day — pick a topic to start</p>
+
+      <div style={{display:"flex",gap:10,marginBottom:18}}>
+        <div className="glass-sm" style={{flex:1,padding:"12px",textAlign:"center"}}>
+          <div className="mono" style={{fontSize:18,fontWeight:700,color:C.cyan}}>
+            {Object.values(today).reduce((s,t)=>s+(t.score||0),0)}
+          </div>
+          <div style={{fontSize:10,color:C.muted,marginTop:3}}>Today's Score</div>
+        </div>
+        <div className="glass-sm" style={{flex:1,padding:"12px",textAlign:"center"}}>
+          <div className="mono" style={{fontSize:18,fontWeight:700,color:C.success}}>{lifetimeScore}</div>
+          <div style={{fontSize:10,color:C.muted,marginTop:3}}>Lifetime Score</div>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10}}>
+        {topics.map(t=>{
+          const done = today[t.id];
+          return (
+            <div key={t.id} className="glass" style={{padding:"15px 13px",cursor:"pointer",transition:"all .2s",position:"relative"}}
+              onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
+              onMouseLeave={e=>e.currentTarget.style.transform=""}
+              onClick={()=>setActiveTopic(t.id)}>
+              {done && (
+                <span style={{position:"absolute",top:10,right:10,fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,background:"rgba(0,200,83,0.15)",color:C.success}}>
+                  ✓ {done.score}
+                </span>
+              )}
+              <div style={{fontSize:24,marginBottom:8}}>{t.icon}</div>
+              <div style={{fontWeight:600,fontSize:13,color:t.c,marginBottom:4}}>{t.t}</div>
+              <div style={{color:C.muted,fontSize:11,lineHeight:1.5}}>{t.d}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",icon:"🤖"},{id:"Dashboard",icon:"📊"},{id:"Learn",icon:"🎓"},{id:"History",icon:"🕐"}];
 
 export default function SentinelX() {
