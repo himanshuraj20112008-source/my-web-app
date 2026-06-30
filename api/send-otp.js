@@ -18,7 +18,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check user exists (for login flow)
     const userRes = await fetch(
       `${SUPABASE_URL}/rest/v1/app_users?email=eq.${encodeURIComponent(emailNorm)}&select=id,name`,
       { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
@@ -28,7 +27,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "No account found with this email. Please sign up first." });
     }
 
-    // Rate limit: check if an OTP was sent in last 5 minutes
+    // Rate limit: check only OTPs that were successfully created in last 5 minutes
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const recentRes = await fetch(
       `${SUPABASE_URL}/rest/v1/otp_codes?email=eq.${encodeURIComponent(emailNorm)}&created_at=gte.${fiveMinAgo}&select=id&order=created_at.desc&limit=1`,
@@ -39,23 +38,9 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: "Please wait before requesting another OTP." });
     }
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-    // Save OTP
-    await fetch(`${SUPABASE_URL}/rest/v1/otp_codes`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SERVICE_KEY,
-        Authorization: `Bearer ${SERVICE_KEY}`,
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify({ email: emailNorm, otp, expires_at: expiresAt }),
-    });
-
-    // Send email via Resend
+    // Send email FIRST — only save OTP to DB if email actually goes through
     const emailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -80,6 +65,19 @@ export default async function handler(req, res) {
     if (!emailRes.ok) {
       return res.status(500).json({ error: "Failed to send email: " + emailText });
     }
+
+    // Email sent successfully — NOW save the OTP
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    await fetch(`${SUPABASE_URL}/rest/v1/otp_codes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ email: emailNorm, otp, expires_at: expiresAt }),
+    });
 
     return res.status(200).json({ success: true });
   } catch (e) {
