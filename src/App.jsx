@@ -2083,6 +2083,9 @@ if (!user) {
               </button>
             ))}
           </nav>
+          <button onClick={()=>{ if(window.confirm("Logout from SentinelX?")) logout(); }} style={{marginLeft:8,padding:"6px 12px",fontSize:11,borderRadius:8,background:"rgba(255,77,79,0.08)",border:"1px solid rgba(255,77,79,0.25)",color:C.danger,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
+            🚪 Logout
+          </button>
         </header>
         <main>
           {page==="Home"&&<HomePage setPage={setPage}/>}
