@@ -1651,16 +1651,38 @@ function useQuizProgress() {
     catch { return {}; }
   });
   const today = data[todayKey] || {};
+
   const lifetimeScore = Object.values(data).reduce((sum, day) =>
     sum + Object.values(day).reduce((s, t) => s + (t.score || 0), 0), 0);
-  function saveTopicScore(topic, score) {
+
+  function saveAnswer(topic, qIdx, selectedIdx, isCorrect, totalQuestions) {
     setData(prev => {
-      const updated = { ...prev, [todayKey]: { ...(prev[todayKey] || {}), [topic]: { score, completed: true } } };
+      const dayData = prev[todayKey] || {};
+      const topicData = dayData[topic] || { answers: {}, score: 0, completed: false };
+      const newAnswers = { ...topicData.answers, [qIdx]: selectedIdx };
+      const newScore = Object.keys(newAnswers).reduce((sum, k) => {
+        return sum; // score recalculated below using isCorrect map separately
+      }, 0);
+      const updatedTopicData = {
+        ...topicData,
+        answers: newAnswers,
+        score: (topicData.score || 0) + (isCorrect ? 10 : 0),
+        completed: Object.keys(newAnswers).length >= totalQuestions,
+      };
+      const updated = {
+        ...prev,
+        [todayKey]: { ...dayData, [topic]: updatedTopicData },
+      };
       localStorage.setItem("sentinelx_quiz", JSON.stringify(updated));
       return updated;
     });
   }
-  return { today, lifetimeScore, saveTopicScore, todayKey };
+
+  function getTopicProgress(topic) {
+    return today[topic] || { answers: {}, score: 0, completed: false };
+  }
+
+  return { today, lifetimeScore, saveAnswer, getTopicProgress, todayKey };
 }
 
 function QuizView({ topic, label, onBack, onComplete }) {
