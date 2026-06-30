@@ -2058,6 +2058,12 @@ const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",ic
 export default function SentinelX() {
 const [page,setPage]=useState("Home");
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
+const { user, login, logout } = useAuth();
+
+if (!user) {
+  return <AuthPage onLogin={login} />;
+}
+
   return (
     <>
       <style>{css}</style>
