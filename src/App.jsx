@@ -1936,13 +1936,13 @@ function AuthPage({ onLogin }) {
         setError(data.error || "Could not send OTP");
         if (res.status === 429) {
           setStep("otp");
-          setCooldown(300);
+          setCooldown(60);
         }
         setLoading(false);
         return;
       }
       setStep("otp");
-      setCooldown(300);
+      setCooldown(60);
     } catch {
       setError("Network error. Please try again.");
     }
