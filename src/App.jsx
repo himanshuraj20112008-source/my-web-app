@@ -1232,7 +1232,7 @@ const SCAN_TYPES = [
   {id:"domain",label:"Domain",icon:"🌐",ph:"suspicious-site.xyz"},
 ];
 
-function HomePage({ setPage }) {
+function HomePage({ setPage, setDefaultTab }) {
   const [counts,setCounts]=useState([0,0,0,0]);
   const targets=[2471893,153204,98700,45];
   useEffect(()=>{
