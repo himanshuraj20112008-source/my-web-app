@@ -2149,6 +2149,21 @@ useEffect(() => {
   };
 }, []);
 const [defaultTab,setDefaultTab]=useState("upi");
+  const [defaultTab,setDefaultTab]=useState("upi");
+const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+useEffect(() => {
+  const seen = localStorage.getItem("sentinelx_install_guide_seen");
+  if (!seen) {
+    const timer = setTimeout(() => setShowInstallGuide(true), 1500);
+    return () => clearTimeout(timer);
+  }
+}, []);
+
+function closeInstallGuide() {
+  localStorage.setItem("sentinelx_install_guide_seen", "true");
+  setShowInstallGuide(false);
+}
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
 const { user, login, logout } = useAuth();
 
