@@ -2197,6 +2197,8 @@ if (!user) {
             🚪 Logout
           </button>
         </header>
+        {showInstallGuide && <InstallGuideModal onClose={closeInstallGuide}/>}
+{!isOnline && (
         {!isOnline && (
   <div style={{padding:"10px 18px",background:"rgba(255,77,79,0.12)",borderBottom:"1px solid rgba(255,77,79,0.35)",textAlign:"center",fontSize:12,color:"#FF8080",fontWeight:600,lineHeight:1.6}}>
     📡 You're offline — showing local pattern analysis only.
