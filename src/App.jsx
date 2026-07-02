@@ -2060,6 +2060,18 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
 }
 export default function SentinelX() {
 const [page,setPage]=useState("Home");
+  const [isOnline, setIsOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+
+useEffect(() => {
+  const goOnline = () => setIsOnline(true);
+  const goOffline = () => setIsOnline(false);
+  window.addEventListener("online", goOnline);
+  window.addEventListener("offline", goOffline);
+  return () => {
+    window.removeEventListener("online", goOnline);
+    window.removeEventListener("offline", goOffline);
+  };
+}, []);
 const [defaultTab,setDefaultTab]=useState("upi");
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
 const { user, login, logout } = useAuth();
