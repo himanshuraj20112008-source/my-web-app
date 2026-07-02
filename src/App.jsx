@@ -1288,7 +1288,15 @@ function HomePage({ setPage }) {
             <div key={f.t} className="glass" style={{padding:"16px 14px",cursor:"pointer",transition:"all .2s"}}
               onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(0,212,255,.35)";e.currentTarget.style.transform="translateY(-2px)"}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.transform=""}}
-              onClick={()=>setPage(f.t==="AI Assistant"?"Assistant":f.t==="Learn & Quiz"?"Learn":"Scanner")}>
+             onClick={()=>{
+  if(f.t==="AI Assistant"){setPage("Assistant");}
+  else if(f.t==="Learn & Quiz"){setPage("Learn");}
+  else{
+    const tabMap={"UPI Fraud Guard":"upi","URL Analyzer":"url","Phone Checker":"phone","Email Verifier":"email","SMS Scam Detector":"sms","Domain Intel":"domain"};
+    setDefaultTab(tabMap[f.t]||"upi");
+    setPage("Scanner");
+  }
+}}>
               <div style={{fontSize:22,marginBottom:10}}>{f.icon}</div>
               <div style={{fontWeight:600,fontSize:13,marginBottom:5}}>{f.t}</div>
               <div style={{color:C.muted,fontSize:11,lineHeight:1.55}}>{f.d}</div>
