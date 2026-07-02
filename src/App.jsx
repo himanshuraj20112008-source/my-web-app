@@ -1331,7 +1331,7 @@ function shareOnWhatsApp(type, input, score, level, indicators) {
   window.open(url, "_blank");
 }
 function ScannerPage({ addScan, defaultTab="upi" }) {
-  const [tab,setTab]=useState("upi");
+  const [tab,setTab]=useState(defaultTab);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
   const [result,setResult]=useState(null);
