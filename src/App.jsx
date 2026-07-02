@@ -1330,7 +1330,7 @@ function shareOnWhatsApp(type, input, score, level, indicators) {
   const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank");
 }
-function ScannerPage({ addScan }) {
+function ScannerPage({ addScan, defaultTab="upi" }) {
   const [tab,setTab]=useState("upi");
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
