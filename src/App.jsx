@@ -2103,6 +2103,14 @@ if (!user) {
             🚪 Logout
           </button>
         </header>
+        {!isOnline && (
+  <div style={{padding:"10px 18px",background:"rgba(255,77,79,0.12)",borderBottom:"1px solid rgba(255,77,79,0.35)",textAlign:"center",fontSize:12,color:"#FF8080",fontWeight:600,lineHeight:1.6}}>
+    📡 You're offline — showing local pattern analysis only.
+    <br/>
+    <span style={{fontWeight:400,color:"#FFB3B3"}}>For accurate real-time results (AI, NumVerify, VirusTotal, Safe Browsing), please connect to the internet.</span>
+  </div>
+)}
+<main>
         <main>
           {page==="Home"&&<HomePage setPage={setPage} setDefaultTab={setDefaultTab}/>}
          {page==="Scanner"&&<ScannerPage addScan={addScan} defaultTab={defaultTab}/>}
