@@ -2060,6 +2060,7 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
 }
 export default function SentinelX() {
 const [page,setPage]=useState("Home");
+const [defaultTab,setDefaultTab]=useState("upi");
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
 const { user, login, logout } = useAuth();
 
