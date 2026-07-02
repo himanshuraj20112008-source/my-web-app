@@ -2093,7 +2093,7 @@ if (!user) {
         </header>
         <main>
           {page==="Home"&&<HomePage setPage={setPage}/>}
-          {page==="Scanner"&&<ScannerPage addScan={addScan}/>}
+         {page==="Scanner"&&<ScannerPage addScan={addScan} defaultTab={defaultTab}/>}
           {page==="Assistant"&&<AssistantPage/>}
           {page==="Dashboard"&&<DashboardPage/>}
           {page==="Learn"&&<LearnPage/>}
