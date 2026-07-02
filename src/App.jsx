@@ -1840,6 +1840,82 @@ function LearnPage() {
     </div>
   );
 }
+// ─── INSTALL GUIDE ────────────────────────────────────────────────────────────
+function detectDevice() {
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  if (isIOS) return "ios";
+  if (isAndroid) return "android";
+  return "desktop";
+}
+
+function InstallGuideModal({ onClose }) {
+  const device = detectDevice();
+
+  const steps = {
+    ios: [
+      { icon: "🧭", text: "Safari browser mein ye app kholo (Chrome mein kaam nahi karega)" },
+      { icon: "⬆️", text: "Neeche/upar 'Share' icon (□ with ↑) par tap karo" },
+      { icon: "📲", text: "Neeche scroll karke \"Add to Home Screen\" par tap karo" },
+      { icon: "✅", text: "\"Add\" par tap karo — bas! App aapki home screen par aa jayegi" },
+    ],
+    android: [
+      { icon: "⋮", text: "Top-right corner mein 3 dots (⋮ menu) par tap karo" },
+      { icon: "📲", text: "\"Add to Home screen\" ya \"Install app\" option dhundo aur tap karo" },
+      { icon: "✅", text: "\"Install\" / \"Add\" confirm karo — app icon home screen par aa jayega" },
+      { icon: "🚀", text: "Ab aap ise ek normal app ki tarah kholo, bina browser ke!" },
+    ],
+    desktop: [
+      { icon: "🔗", text: "Address bar ke right side mein ek install icon (⊕) dhundo" },
+      { icon: "🖱️", text: "Us icon par click karo, phir \"Install\" par click karo" },
+      { icon: "✅", text: "SentinelX ab aapke desktop/taskbar se ek app ki tarah khulega" },
+    ],
+  };
+
+  const currentSteps = steps[device];
+  const deviceLabel = device === "ios" ? "iPhone / iPad" : device === "android" ? "Android" : "Computer";
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div className="glass fu" style={{maxWidth:420,width:"100%",padding:26,maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{textAlign:"center",marginBottom:18}}>
+          <div style={{display:"inline-flex",marginBottom:10}}><Shield size={44}/></div>
+          <h2 style={{fontSize:18,fontWeight:700,marginBottom:4}}>📲 Install SentinelX App</h2>
+          <p style={{fontSize:12,color:C.muted}}>Detected: <span style={{color:C.cyan,fontWeight:600}}>{deviceLabel}</span></p>
+        </div>
+
+        <div style={{background:"rgba(0,212,255,0.06)",border:"1px solid rgba(0,212,255,0.2)",borderRadius:10,padding:"12px 14px",marginBottom:18,fontSize:12,color:C.text,lineHeight:1.6}}>
+          💡 SentinelX ko apne home screen par install karo — turant ek tap mein khulega, bina browser address type kiye, bilkul ek normal app ki tarah!
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
+          {currentSteps.map((s,i)=>(
+            <div key={i} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+              <div style={{flexShrink:0,width:32,height:32,borderRadius:8,background:"rgba(0,212,255,0.1)",border:"1px solid rgba(0,212,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>
+                {s.icon}
+              </div>
+              <div style={{fontSize:13,color:C.text,lineHeight:1.55,paddingTop:5}}>
+                <span style={{color:C.cyan,fontWeight:700,marginRight:4}}>{i+1}.</span>{s.text}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {device === "ios" && (
+          <div style={{fontSize:11,color:C.warning,background:"rgba(255,193,7,0.08)",border:"1px solid rgba(255,193,7,0.25)",borderRadius:8,padding:"9px 12px",marginBottom:16}}>
+            ⚠️ Note: Yeh sirf Safari mein kaam karta hai. Chrome/Firefox mein "Add to Home Screen" option nahi milega (Apple ka restriction hai).
+          </div>
+        )}
+
+        <button className="btn-prime" onClick={onClose} style={{width:"100%",padding:"12px",fontSize:13}}>
+          Got it! 👍
+        </button>
+      </div>
+    </div>
+  );
+}
 // ─── AUTH SYSTEM ──────────────────────────────────────────────────────────────
 function useAuth() {
   const [user, setUser] = useState(() => {
