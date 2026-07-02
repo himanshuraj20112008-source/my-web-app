@@ -2149,7 +2149,6 @@ useEffect(() => {
   };
 }, []);
 const [defaultTab,setDefaultTab]=useState("upi");
-  const [defaultTab,setDefaultTab]=useState("upi");
 const [showInstallGuide, setShowInstallGuide] = useState(false);
 
 useEffect(() => {
