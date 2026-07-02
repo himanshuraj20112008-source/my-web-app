@@ -2111,7 +2111,6 @@ if (!user) {
   </div>
 )}
 <main>
-        <main>
           {page==="Home"&&<HomePage setPage={setPage} setDefaultTab={setDefaultTab}/>}
          {page==="Scanner"&&<ScannerPage addScan={addScan} defaultTab={defaultTab}/>}
           {page==="Assistant"&&<AssistantPage/>}
