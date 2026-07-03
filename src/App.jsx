@@ -2182,6 +2182,16 @@ if (!user) {
               <div style={{fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase"}}>Cyber Shield AI</div>
             </div>
           </div>
+          <div style={{
+            display:"flex", alignItems:"center", gap:6, padding:"6px 12px",
+            borderRadius:20, background:"rgba(0,212,255,0.07)",
+            border:"1px solid rgba(0,212,255,0.2)"
+          }}>
+            <span style={{fontSize:14}}>👋</span>
+            <span style={{fontSize:12, fontWeight:600, color:C.text}}>
+              Welcome, <span style={{color:C.cyan}}>{user.name || "User"}</span>
+            </span>
+          </div>
           <nav style={{display:"flex",gap:2}}>
             {NAV.map(n=>(
               <button key={n.id} className="tab" onClick={()=>setPage(n.id)} style={{padding:"6px 11px",fontSize:11,color:page===n.id?C.cyan:C.muted,background:page===n.id?"rgba(0,212,255,0.08)":"transparent",borderBottom:page===n.id?`2px solid ${C.cyan}`:"2px solid transparent",borderRadius:0}}>
