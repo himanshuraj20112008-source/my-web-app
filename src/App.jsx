@@ -29,6 +29,82 @@ body{font-family:'Inter',sans-serif;background:${C.bg};color:${C.text};overflow-
 .ifield::placeholder{color:${C.muted}}
 .tab{background:transparent;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;border-radius:8px;white-space:nowrap}
 .mono{font-family:'JetBrains Mono',monospace}
+
+/* ── MOBILE RESPONSIVE ───────────────────────────────────────── */
+@media (max-width:600px){
+
+  /* Bottom nav — bade touch targets */
+  .mobile-nav-btn{
+    padding:10px 2px 8px !important;
+    font-size:11px !important;
+  }
+  .mobile-nav-icon{
+    font-size:22px !important;
+  }
+
+  /* Header compact */
+  .mobile-header{
+    padding:8px 12px !important;
+  }
+  .mobile-welcome{
+    display:none !important;
+  }
+  .mobile-logout{
+    padding:5px 8px !important;
+    font-size:10px !important;
+  }
+
+  /* Scanner tabs scroll */
+  .mobile-tabs{
+    overflow-x:auto !important;
+    flex-wrap:nowrap !important;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding-bottom:4px;
+  }
+  .mobile-tabs::-webkit-scrollbar{display:none}
+
+  /* Home hero compact */
+  .mobile-hero{
+    padding:24px 16px 20px !important;
+  }
+  .mobile-hero h1{
+    font-size:26px !important;
+  }
+  .mobile-hero p{
+    font-size:13px !important;
+  }
+
+  /* Tool cards — 2 column grid on mobile */
+  .mobile-tools{
+    grid-template-columns:repeat(2,1fr) !important;
+    gap:8px !important;
+  }
+  .mobile-tool-card{
+    padding:12px 10px !important;
+  }
+  .mobile-tool-card .tool-icon{
+    font-size:18px !important;
+    margin-bottom:6px !important;
+  }
+  .mobile-tool-card .tool-title{
+    font-size:11px !important;
+  }
+  .mobile-tool-card .tool-desc{
+    display:none !important;
+  }
+
+  /* Stats grid */
+  .mobile-stats{
+    grid-template-columns:repeat(2,1fr) !important;
+    padding:0 12px 20px !important;
+  }
+
+  /* General padding */
+  .mobile-page{
+    padding:16px 12px !important;
+  }
+}
 `;
 
 async function callAI({ messages, system }) {
