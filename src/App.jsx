@@ -1348,7 +1348,7 @@ function HomePage({ setPage, setDefaultTab }) {
           <button className="btn-ghost" style={{padding:"13px 22px",fontSize:14}} onClick={()=>setPage("Assistant")}>🤖 Ask AI</button>
         </div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,padding:"0 20px 36px"}}>
+     
         {stats.map(s=>(
           <div key={s.label} className="glass-sm" style={{padding:"16px 12px",textAlign:"center"}}>
             <div className="mono" style={{fontSize:20,fontWeight:700,background:`linear-gradient(135deg,${C.cyan},${C.blue})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{s.val}</div>
