@@ -2250,7 +2250,7 @@ if (!user) {
     <>
       <style>{css}</style>
       <div style={{minHeight:"100vh",background:C.bg,maxWidth:760,margin:"0 auto"}}>
-        <header style={{padding:"12px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"rgba(8,14,28,0.96)",backdropFilter:"blur(14px)",zIndex:100}}>
+        <header className="mobile-header" style={{padding:"12px 18px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"rgba(8,14,28,0.96)",backdropFilter:"blur(14px)",zIndex:100}}>
           <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setPage("Home")}>
             <Shield size={30}/>
             <div>
