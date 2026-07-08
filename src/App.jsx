@@ -2268,13 +2268,7 @@ if (!user) {
               Welcome, <span style={{color:C.cyan}}>{user.name || "User"}</span>
             </span>
           </div>
-          <nav style={{display:"flex",gap:2}}>
-            {NAV.map(n=>(
-              <button key={n.id} className="tab" onClick={()=>setPage(n.id)} style={{padding:"6px 11px",fontSize:11,color:page===n.id?C.cyan:C.muted,background:page===n.id?"rgba(0,212,255,0.08)":"transparent",borderBottom:page===n.id?`2px solid ${C.cyan}`:"2px solid transparent",borderRadius:0}}>
-                <span style={{marginRight:4}}>{n.icon}</span>
-              </button>
-            ))}
-          </nav>
+          
          <button onClick={()=>setShowInstallGuide(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(0,212,255,0.08)",border:"1px solid rgba(0,212,255,0.25)",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
             📲
           </button>
