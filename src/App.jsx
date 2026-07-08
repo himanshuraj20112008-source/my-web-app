@@ -1333,7 +1333,7 @@ function HomePage({ setPage, setDefaultTab }) {
   ];
   return (
     <div className="fu">
-      <div style={{textAlign:"center",padding:"50px 20px 36px"}}>
+      <div style={{textAlign:"center",padding:"20px 16px 16px"}}>
         <div style={{display:"inline-flex",padding:16,borderRadius:"50%",background:"rgba(0,212,255,0.06)",border:"1px solid rgba(0,212,255,0.15)",marginBottom:20,animation:"glow 3s ease infinite"}}>
           <Shield size={56}/>
         </div>
