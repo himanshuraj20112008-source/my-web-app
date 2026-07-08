@@ -2258,7 +2258,7 @@ if (!user) {
               <div style={{fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase"}}>Cyber Shield AI</div>
             </div>
           </div>
-          <div style={{
+          <div className="mobile-welcome" style={{
             display:"flex", alignItems:"center", gap:6, padding:"6px 12px",
             borderRadius:20, background:"rgba(0,212,255,0.07)",
             border:"1px solid rgba(0,212,255,0.2)"
