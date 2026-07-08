@@ -1359,7 +1359,7 @@ function HomePage({ setPage, setDefaultTab }) {
       <div style={{padding:"0 12px 16px"}}>
         <h2 style={{textAlign:"center",fontSize:18,fontWeight:600,marginBottom:4}}>Comprehensive Security Toolkit</h2>
         <p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:20}}>Hybrid rule engine + AI — built to replace simple keyword checkers</p>
-        <div className="mobile-tools" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(195px,1fr))",gap:10}}>
+        <div className="mobile-tools" style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
           {tools.map(f=>(
             <div key={f.t} className="glass mobile-tool-card" style={{padding:"16px 14px",cursor:"pointer",transition:"all .2s"}}
               onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(0,212,255,.35)";e.currentTarget.style.transform="translateY(-2px)"}}
