@@ -2300,7 +2300,7 @@ if (!user) {
             </button>
           ))}
         </div>
-        <div style={{height:64}}/>
+        <div style={{height:"calc(64px + env(safe-area-inset-bottom))"}}/>
       </div>
     </>
   );
