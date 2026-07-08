@@ -1374,7 +1374,7 @@ function HomePage({ setPage, setDefaultTab }) {
   }
 }}>
               <div style={{fontSize:18,marginBottom:4}}>{f.icon}</div>
-              <div style={{fontWeight:600,fontSize:13,marginBottom:5}}>{f.t}</div>
+              <div style={{fontWeight:600,fontSize:11,marginBottom:2}}>{f.t}</div>
               <div style={{color:C.muted,fontSize:11,lineHeight:1.55}}>{f.d}</div>
             </div>
           ))}
