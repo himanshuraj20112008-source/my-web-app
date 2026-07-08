@@ -1358,7 +1358,7 @@ function HomePage({ setPage, setDefaultTab }) {
       </div>
       <div style={{padding:"0 12px 16px"}}>
         <h2 style={{textAlign:"center",fontSize:14,fontWeight:600,marginBottom:2}}>Comprehensive Security Toolkit</h2>
-        <p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:20}}>Hybrid rule engine + AI — built to replace simple keyword checkers</p>
+        <p style={{textAlign:"center",color:C.muted,fontSize:11,marginBottom:10}}>Hybrid rule engine + AI — built to replace simple keyword checkers</p>
         <div className="mobile-tools" style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
           {tools.map(f=>(
             <div key={f.t} className="glass mobile-tool-card" style={{padding:"10px 10px",cursor:"pointer",transition:"all .2s"}}
