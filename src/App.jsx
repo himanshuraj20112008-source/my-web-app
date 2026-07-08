@@ -1465,7 +1465,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
         <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>🔍 Smart Risk Analyzer</h2>
         <p style={{color:C.muted,fontSize:12}}>Hybrid rule engine + AI — multi-heuristic analysis</p>
       </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+      <div style={{className="mobile-tabs" style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}}}>
         {SCAN_TYPES.map(t=>(
           <button key={t.id} className="tab" onClick={()=>{setTab(t.id);setResult(null);setInput("");setAiExplanation("")}}
             style={{padding:"7px 13px",fontSize:12,color:tab===t.id?"#000":C.muted,background:tab===t.id?`linear-gradient(135deg,${C.cyan},${C.blue})`:"rgba(255,255,255,0.04)",border:tab===t.id?"none":"1px solid rgba(255,255,255,0.07)",fontWeight:tab===t.id?700:400}}>
