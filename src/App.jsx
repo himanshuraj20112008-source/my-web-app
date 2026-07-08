@@ -2301,7 +2301,7 @@ if (!user) {
         <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:760,background:"rgba(8,14,28,0.97)",borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>
           {NAV.map(n=>(
             <button key={n.id} className="tab" onClick={()=>setPage(n.id)} className="mobile-nav-btn" style={{flex:1,padding:"10px 4px 9px",fontSize:9,color:page===n.id?C.cyan:C.muted,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-              <span style={{fontSize:17}}>{n.icon}</span>{n.id}
+              <span className="mobile-nav-icon" style={{fontSize:17}}>{n.icon}</span>{n.id}
             </button>
           ))}
         </div>
