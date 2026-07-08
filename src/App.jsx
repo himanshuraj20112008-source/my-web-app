@@ -2295,7 +2295,7 @@ if (!user) {
         </main>
         <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:760,background:"rgba(8,14,28,0.97)",borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom)"}}>
           {NAV.map(n=>(
-            <button key={n.id} className="tab mobile-nav-btn" onClick={()=>setPage(n.id)} style={{flex:1,padding:"10px 4px 9px",fontSize:9,color:page===n.id?C.cyan:C.muted,display:"flex",flexDirection:"column",alignItems:"center",gap:2,justifyContent:"center",minHeight:48}}}}>
+            <button key={n.id} className="tab mobile-nav-btn" onClick={()=>setPage(n.id)} style={{flex:1,padding:"10px 4px 9px",fontSize:9,color:page===n.id?C.cyan:C.muted,display:"flex",flexDirection:"column",alignItems:"center",gap:2,justifyContent:"center",minHeight:48}}>
               <span className="mobile-nav-icon" style={{fontSize:17}}>{n.icon}</span>{n.id}
             </button>
           ))}
