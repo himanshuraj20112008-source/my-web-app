@@ -2278,6 +2278,7 @@ if (!user) {
 }
 
   return (
+    <ErrorBoundary>
     <>
       <style>{css}</style>
       <div style={{minHeight:"100vh",background:C.bg,maxWidth:760,margin:"0 auto"}}>
