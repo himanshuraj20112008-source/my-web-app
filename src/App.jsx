@@ -120,7 +120,6 @@ function safeGetItem(key, fallback) {
 }
 
 async function callAI({ messages, system }) {
-async function callAI({ messages, system }) {
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
