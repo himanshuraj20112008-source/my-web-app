@@ -108,6 +108,18 @@ body{font-family:'Inter',sans-serif;background:${C.bg};color:${C.text};overflow-
 }
 `;
 
+function safeSetItem(key, value) {
+  try { localStorage.setItem(key, value); return true; }
+  catch (e) { console.warn("Storage write failed:", e); return false; }
+}
+function safeGetItem(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v;
+  } catch (e) { console.warn("Storage read failed:", e); return fallback; }
+}
+
+async function callAI({ messages, system }) {
 async function callAI({ messages, system }) {
   try {
     const res = await fetch("/api/chat", {
