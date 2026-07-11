@@ -2217,6 +2217,24 @@ function AuthPage({ onLogin }) {
     </div>
   );
 }
+  class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("SentinelX crash:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#fff",background:"#080E1C",padding:20,textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>⚠️</div>
+          <h2 style={{marginBottom:8}}>Kuch galat ho gaya</h2>
+          <p style={{color:"#888",fontSize:12,marginBottom:16,maxWidth:400,wordBreak:"break-word"}}>{String(this.state.error)}</p>
+          <button onClick={()=>window.location.reload()} style={{padding:"10px 24px",borderRadius:8,background:"#00D4FF",border:"none",color:"#000",fontWeight:700,cursor:"pointer"}}>Reload App</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Assistant",icon:"🤖"},{id:"Dashboard",icon:"📊"},{id:"Learn",icon:"🎓"},{id:"History",icon:"🕐"}];
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
