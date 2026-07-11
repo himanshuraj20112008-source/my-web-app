@@ -1220,26 +1220,26 @@ function AIThreatExplanation({ explanation, loading }) {
 // ─── SCAN HISTORY ─────────────────────────────────────────────────────────────
 function useScanHistory() {
   const [history, setHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("sentinelx_history") || "[]"); }
+    try { return JSON.parse(safeGetItem("sentinelx_history", "[]")); }
     catch { return []; }
   });
   function addScan(type, input, score, level) {
     const entry = { id: Date.now(), type, input: input.slice(0,60), score, level, time: new Date().toLocaleString("en-IN") };
     setHistory(prev => {
       const updated = [entry, ...prev].slice(0, 50);
-      localStorage.setItem("sentinelx_history", JSON.stringify(updated));
+      safeSetItem("sentinelx_history", JSON.stringify(updated));
       return updated;
     });
   }
   function deleteScan(id) {
     setHistory(prev => {
       const updated = prev.filter(h => h.id !== id);
-      localStorage.setItem("sentinelx_history", JSON.stringify(updated));
+      safeSetItem("sentinelx_history", JSON.stringify(updated));
       return updated;
     });
   }
   function clearHistory() {
-    localStorage.removeItem("sentinelx_history");
+    try { localStorage.removeItem("sentinelx_history"); } catch (e) { console.warn(e); }
     setHistory([]);
   }
   return { history, addScan, deleteScan, clearHistory };
