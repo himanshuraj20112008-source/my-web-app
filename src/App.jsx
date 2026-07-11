@@ -2274,7 +2274,7 @@ const { history, addScan, deleteScan, clearHistory } = useScanHistory();
 const { user, login, logout } = useAuth();
 
 if (!user) {
-  return <AuthPage onLogin={login} />;
+  return <ErrorBoundary><AuthPage onLogin={login} /></ErrorBoundary>;
 }
 
   return (
