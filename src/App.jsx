@@ -1725,7 +1725,7 @@ function DashboardPage() {
 function useQuizProgress() {
   const todayKey = new Date().toISOString().split("T")[0];
   const [data, setData] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("sentinelx_quiz") || "{}"); }
+    try { return JSON.parse(safeGetItem("sentinelx_quiz", "{}")); }
     catch { return {}; }
   });
   const today = data[todayKey] || {};
