@@ -2008,15 +2008,15 @@ function InstallGuideModal({ onClose }) {
 // ─── AUTH SYSTEM ──────────────────────────────────────────────────────────────
 function useAuth() {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("sentinelx_user") || "null"); }
+    try { return JSON.parse(safeGetItem("sentinelx_user", "null")); }
     catch { return null; }
   });
   function login(userData) {
-    localStorage.setItem("sentinelx_user", JSON.stringify(userData));
+    safeSetItem("sentinelx_user", JSON.stringify(userData));
     setUser(userData);
   }
   function logout() {
-    localStorage.removeItem("sentinelx_user");
+    try { localStorage.removeItem("sentinelx_user"); } catch (e) { console.warn(e); }
     setUser(null);
   }
   return { user, login, logout };
