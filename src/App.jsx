@@ -1751,7 +1751,7 @@ function useQuizProgress() {
         ...prev,
         [todayKey]: { ...dayData, [topic]: updatedTopicData },
       };
-      localStorage.setItem("sentinelx_quiz", JSON.stringify(updated));
+      safeSetItem("sentinelx_quiz", JSON.stringify(updated));
       return updated;
     });
   }
