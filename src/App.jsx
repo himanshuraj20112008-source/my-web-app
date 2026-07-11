@@ -1781,7 +1781,7 @@ function QuizView({ topic, label, onBack, savedProgress, onAnswer }) {
           setQuestions(d.questions);
           // Resume from first unanswered question
           const firstUnanswered = d.questions.findIndex((_, i) => savedAnswers[i] === undefined);
-          setQIdx(firstUnanswered === -1 ? d.questions.length - 1 : firstUnanswered);
+          setQIdx(firstUnanswered === -1 ? 0 : firstUnanswered);
         } else setError("No questions returned");
         setLoading(false);
       })
