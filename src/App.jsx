@@ -2249,7 +2249,7 @@ const seen = safeGetItem("sentinelx_install_guide_seen", null);
 }, []);
 
 function closeInstallGuide() {
-  localStorage.setItem("sentinelx_install_guide_seen", "true");
+  safeSetItem("sentinelx_install_guide_seen", "true");
   setShowInstallGuide(false);
 }
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
