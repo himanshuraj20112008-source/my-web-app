@@ -2331,8 +2331,9 @@ if (!user) {
             </button>
           ))}
         </div>
-        <div style={{height:"calc(64px + env(safe-area-inset-bottom))"}}/>
+       <div style={{height:"calc(64px + env(safe-area-inset-bottom))"}}/>
       </div>
     </>
+    </ErrorBoundary>
   );
 }
