@@ -14,6 +14,13 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Sirf GET requests ko hi cache karo — POST (jaise /api/chat, /api/daily-quiz) ko
+  // Cache API handle nahi karta, isse crash hota tha
+  if (event.request.method !== "GET") {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
