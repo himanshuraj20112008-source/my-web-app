@@ -1,33 +1,17 @@
-const CACHE_NAME = "sentinelx-v1";
+// Service worker ab caching nahi karta — sirf app ko installable banata hai.
+// Purani caching ki wajah se stale/broken JS files serve ho rahi thi, jisse crash aata tha.
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
-    )
+    caches.keys().then((names) => Promise.all(names.map((n) => caches.delete(n))))
   );
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  // Sirf GET requests ko hi cache karo — POST (jaise /api/chat, /api/daily-quiz) ko
-  // Cache API handle nahi karta, isse crash hota tha
-  if (event.request.method !== "GET") {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
+  event.respondWith(fetch(event.request));
 });
