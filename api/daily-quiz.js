@@ -53,13 +53,28 @@ const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
 Make questions practical, India-specific where relevant (UPI, Aadhaar, Indian banks), and varied in difficulty.`,
           },
         ],
+        max_tokens: 3000,
+        temperature: 0.7,
       }),
     });
 
     const aiData = await aiRes.json();
     const text = aiData.choices?.[0]?.message?.content || "[]";
     const clean = text.replace(/```json|```/g, "").trim();
-    const questions = JSON.parse(clean);
+
+    let questions;
+    try {
+      questions = JSON.parse(clean);
+      if (!Array.isArray(questions) || questions.length === 0) {
+        throw new Error("Empty or invalid questions array from AI");
+      }
+    } catch (parseErr) {
+      return res.status(200).json({
+        questions: [],
+        cached: false,
+        error: "Quiz generation failed — AI response was incomplete. Please try again.",
+      });
+    }
 
     // Save to Supabase
     await fetch(`${SUPABASE_URL}/rest/v1/daily_quiz`, {
