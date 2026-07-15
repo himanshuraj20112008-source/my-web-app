@@ -1634,7 +1634,7 @@ function AssistantPage() {
   const [inp,setInp]=useState("");
   const [loading,setLoading]=useState(false);
   const endRef=useRef(null);
-  useEffect(()=>endRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
+  useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[msgs]);
   const chips=["How do I spot a phishing email?","Is KYC update over SMS real?","How to protect my UPI?","What is smishing?"];
   async function send(text) {
     const t=text||inp.trim(); if(!t)return;
