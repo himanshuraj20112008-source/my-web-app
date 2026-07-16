@@ -2312,7 +2312,7 @@ if (!user) {
           {page==="Home"&&<HomePage setPage={setPage} setDefaultTab={setDefaultTab}/>}
          {page==="Scanner"&&<ScannerPage addScan={addScan} defaultTab={defaultTab}/>}
           {page==="Assistant"&&<AssistantPage/>}
-          {page==="Dashboard"&&<DashboardPage/>}
+          {page==="Dashboard"&&<DashboardPage history={history}/>}
           {page==="Learn"&&<LearnPage/>}
 {page==="History"&&<HistoryPage history={history} deleteScan={deleteScan} clearHistory={clearHistory}/>}
         </main>
