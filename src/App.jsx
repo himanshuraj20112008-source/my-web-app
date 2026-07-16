@@ -1360,14 +1360,7 @@ function HomePage({ setPage, setDefaultTab }) {
           <button className="btn-ghost" style={{padding:"13px 22px",fontSize:14}} onClick={()=>setPage("Assistant")}>🤖 Ask AI</button>
         </div>
       </div>
-      <div className="mobile-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,padding:"0 12px 20px"}}>
-        {stats.map(s=>(
-          <div key={s.label} className="glass-sm" style={{padding:"16px 12px",textAlign:"center"}}>
-            <div className="mono" style={{fontSize:20,fontWeight:700,background:`linear-gradient(135deg,${C.cyan},${C.blue})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{s.val}</div>
-            <div style={{fontSize:11,color:C.muted,marginTop:5}}>{s.label}</div>
-          </div>
-        ))}
-      </div>
+
       <div style={{padding:"0 12px 16px"}}>
         <h2 style={{textAlign:"center",fontSize:14,fontWeight:600,marginBottom:2}}>Comprehensive Security Toolkit</h2>
         <p style={{textAlign:"center",color:C.muted,fontSize:11,marginBottom:10}}>Hybrid rule engine + AI — built to replace simple keyword checkers</p>
