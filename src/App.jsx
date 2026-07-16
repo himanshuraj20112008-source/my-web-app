@@ -2112,6 +2112,7 @@ function AuthPage({ onLogin }) {
   // Login — sends OTP
   async function sendOtp() {
     setError("");
+    setShowReport(false);
     setLoading(true);
     try {
       const res = await fetch("/api/send-otp", {
@@ -2122,6 +2123,7 @@ function AuthPage({ onLogin }) {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Could not send OTP");
+        setShowReport(res.status >= 500);
         if (res.status === 429) {
           setStep("otp");
           setCooldown(60);
@@ -2133,6 +2135,7 @@ function AuthPage({ onLogin }) {
       setCooldown(60);
     } catch {
       setError("Network error. Please try again.");
+      setShowReport(true);
     }
     setLoading(false);
   }
