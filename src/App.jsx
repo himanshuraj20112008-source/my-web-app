@@ -215,18 +215,16 @@ function calcEntropy(s) {
 function hasRepeats(s,n=3) { return /(.)\1{2,}/.test(s) || new RegExp(`(..){${n},}`).test(s); }
 
 async function callGoogleSafeBrowsing(rawUrl) {
-  const apiKey = import.meta.env.VITE_GOOGLE_SAFE_BROWSING_KEY;
-  if (!apiKey) return { status: "no_key" };
-  const targetUrl = rawUrl.startsWith("http") ? rawUrl : "https://" + rawUrl;
   try {
-    const res = await fetch(`https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`,{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ client:{clientId:"sentinelx",clientVersion:"1.0"}, threatInfo:{ threatTypes:["MALWARE","SOCIAL_ENGINEERING","UNWANTED_SOFTWARE","POTENTIALLY_HARMFUL_APPLICATION"], platformTypes:["ANY_PLATFORM"], threatEntryTypes:["URL"], threatEntries:[{url:targetUrl}] } }),
+    const res = await fetch("/api/check-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: rawUrl }),
     });
-    const data = await res.json();
-    if (data.matches?.length > 0) { const threats=[...new Set(data.matches.map(m=>m.threatType))]; return {status:"danger",threats}; }
-    return {status:"safe"};
-  } catch { return {status:"error"}; }
+    return await res.json();
+  } catch {
+    return { status: "error" };
+  }
 }
 
 // ─── RISK ENGINE ──────────────────────────────────────────────────────────────
