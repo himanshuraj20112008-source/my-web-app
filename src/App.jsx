@@ -2250,7 +2250,16 @@ function AuthPage({ onLogin }) {
             </div>
             <input className="ifield mono" value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="000000" style={{padding:"12px 13px",fontSize:20,textAlign:"center",letterSpacing:8,marginBottom:14}}/>
 
-            {error && <div style={{fontSize:12,color:C.danger,marginBottom:12,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>}
+            {error && (
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:12,color:C.danger,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>
+                {showReport && (
+                  <button onClick={()=>reportLoginIssue("OTP Verification")} style={{marginTop:6,fontSize:11,color:C.cyan,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"Inter,sans-serif"}}>
+                    ⚠️ App not working? Report this issue
+                  </button>
+                )}
+              </div>
+            )}
 
             <button className="btn-prime" disabled={loading||otp.length<6} onClick={handleVerifyOtp} style={{width:"100%",padding:"12px",fontSize:13,marginBottom:14}}>
               {loading ? "⏳ Verifying…" : "Verify & Continue"}
