@@ -1622,6 +1622,26 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
   );
 }
 
+function formatAIText(text) {
+  if (!text) return null;
+  const lines = text.split("\n").map(l=>l.trim()).filter(l=>l.length>0);
+  return lines.map((line, i) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g).filter(p=>p.length>0);
+    const rendered = parts.map((part, j) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={j} style={{color:C.cyan,fontWeight:700}}>{part.slice(2,-2)}</strong>;
+      }
+      return <span key={j}>{part}</span>;
+    });
+    const isBullet = /^[-•]\s+/.test(line) || /^\d+\.\s+/.test(line);
+    return (
+      <div key={i} style={{marginBottom:8,paddingLeft:isBullet?4:0}}>
+        {rendered}
+      </div>
+    );
+  });
+}
+
 function AssistantPage() {
   const [msgs,setMsgs]=useState([{role:"assistant",text:"👋 Hello! I'm SentinelX AI. Ask me anything about online safety — phishing, UPI scams, suspicious messages, or paste something you want me to assess. I remember our full conversation!"}]);
   const [inp,setInp]=useState("");
