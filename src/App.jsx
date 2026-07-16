@@ -1637,7 +1637,7 @@ function AssistantPage() {
     setLoading(true);
     const allMsgs=[...msgs,newUserMsg];
     const history=allMsgs.map(m=>({role:m.role==="assistant"?"assistant":"user",content:m.text}));
-    const reply=await callAI({messages:history,system:"You are SentinelX AI, a friendly and expert cybersecurity assistant. Help users identify scams, phishing, UPI fraud, fake messages and stay safe online. Be concise (under 150 words), direct, and practical. Use plain language. When the user shares a suspicious message or ID, give a quick but detailed risk assessment. Remember the full conversation context and refer back to earlier messages when relevant."});
+    const reply=await callAI({messages:history,system:"You are SentinelX AI, a helpful and knowledgeable assistant built into a cybersecurity app. Your specialty is cybersecurity — scams, phishing, UPI fraud, fake messages, and online safety — and you should give detailed, practical answers on these topics. However, you can also answer general knowledge questions on any topic (science, history, coding, general advice, etc.) accurately and helpfully, just like a normal AI assistant. Never refuse a question as 'out of scope' — always attempt a genuine, correct answer. Be clear and direct. Keep cybersecurity answers practical and actionable; for general topics, answer normally without forcing a cybersecurity angle. Remember the full conversation context and refer back to earlier messages when relevant."});
     setMsgs(m=>[...m,{role:"assistant",text:reply}]);
     setLoading(false);
   }
