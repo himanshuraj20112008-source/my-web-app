@@ -1654,7 +1654,7 @@ function AssistantPage() {
         {msgs.map((m,i)=>(
           <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
             <div style={{maxWidth:"83%",padding:"11px 15px",fontSize:13,lineHeight:1.65,borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.role==="user"?`linear-gradient(135deg,${C.cyan},${C.blue})`:"rgba(255,255,255,0.05)",color:m.role==="user"?"#000":C.text,border:m.role==="assistant"?`1px solid ${C.border}`:"none"}}>
-              {m.text}
+              {m.role==="assistant" ? formatAIText(m.text) : m.text}
             </div>
           </div>
         ))}
