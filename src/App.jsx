@@ -1670,27 +1670,32 @@ function AssistantPage() {
   );
 }
 
-function DashboardPage() {
-  const [counts,setCounts]=useState([0,0,0]);
-  useEffect(()=>{
-    const dur=1200,start=Date.now(),targets=[2471893,153204,2318689];
-    const id=setInterval(()=>{
-      const p=Math.min((Date.now()-start)/dur,1),e=1-Math.pow(1-p,3);
-      setCounts(targets.map(t=>Math.floor(t*e)));
-      if(p>=1)clearInterval(id);
-    },16);
-    return()=>clearInterval(id);
-  },[]);
-  
-  const bars=[62,45,78,55,88,41,66];
-  const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  const lc={critical:C.danger,high:"#FF7A00",medium:C.warning,low:C.success};
+function DashboardPage({ history=[] }) {
+  const total = history.length;
+  const threatsFound = history.filter(h=>h.level==="critical"||h.level==="high").length;
+  const safeScans = history.filter(h=>h.level==="low"||h.level==="medium").length;
+
+  const now = Date.now();
+  const weekMs = 7*24*60*60*1000;
+  const thisWeekCount = history.filter(h=>(now-h.id)<=weekMs).length;
+
+  const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const dayCounts=[0,0,0,0,0,0,0];
+  history.forEach(h=>{
+    if((now-h.id)<=weekMs){
+      const d=new Date(h.id).getDay();
+      dayCounts[d]++;
+    }
+  });
+  const maxCount = Math.max(...dayCounts,1);
+  const bars = dayCounts.map(c=>Math.round((c/maxCount)*100));
+
   return (
     <div className="fu" style={{padding:"22px 18px"}}>
       <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>📊 Dashboard</h2>
-      <p style={{color:C.muted,fontSize:12,marginBottom:18}}>Live threat intelligence overview</p>
+      <p style={{color:C.muted,fontSize:12,marginBottom:18}}>Your real scan activity overview</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:18}}>
-        {[["🔍","Total Scans",counts[0].toLocaleString()+"+",C.cyan],["🛡️","Threats Found",counts[1].toLocaleString()+"+",C.danger],["✅","Safe Scans",counts[2].toLocaleString()+"+",C.success],["🎯","Accuracy","98.7%",C.blue]].map(([icon,label,val,color])=>(
+        {[["🔍","Total Scans",total.toLocaleString(),C.cyan],["🛡️","Threats Found",threatsFound.toLocaleString(),C.danger],["✅","Safe Scans",safeScans.toLocaleString(),C.success],["📅","This Week",thisWeekCount.toLocaleString(),C.blue]].map(([icon,label,val,color])=>(
           <div key={label} className="glass-sm" style={{padding:"15px 12px",textAlign:"center"}}>
             <div style={{fontSize:20,marginBottom:6}}>{icon}</div>
             <div className="mono" style={{fontSize:19,fontWeight:700,color}}>{val}</div>
@@ -1699,21 +1704,24 @@ function DashboardPage() {
         ))}
       </div>
       <div className="glass" style={{padding:18,marginBottom:12}}>
-        <div style={{fontSize:12,fontWeight:600,color:C.cyan,marginBottom:14}}>📈 Weekly Threat Volume</div>
+        <div style={{fontSize:12,fontWeight:600,color:C.cyan,marginBottom:14}}>📈 Weekly Scan Activity</div>
+        {total===0 ? (
+          <div style={{textAlign:"center",padding:"20px 0",color:C.muted,fontSize:12}}>No scans yet — run your first analysis to see activity here!</div>
+        ):(
         <div style={{display:"flex",alignItems:"flex-end",gap:6,height:90}}>
           {bars.map((v,i)=>(
             <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-              <div style={{width:"100%",height:`${v}%`,background:`linear-gradient(180deg,${C.cyan},${C.blue})`,borderRadius:"4px 4px 0 0",opacity:.75}}/>
+              <div style={{width:"100%",height:`${Math.max(v,3)}%`,background:`linear-gradient(180deg,${C.cyan},${C.blue})`,borderRadius:"4px 4px 0 0",opacity:.75}}/>
               <div style={{fontSize:9,color:C.muted}}>{days[i]}</div>
             </div>
           ))}
         </div>
+        )}
       </div>
      
     </div>
   );
 }
-
 function useQuizProgress() {
   const todayKey = new Date().toISOString().split("T")[0];
   const [data, setData] = useState(() => {
