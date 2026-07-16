@@ -2087,6 +2087,7 @@ function AuthPage({ onLogin }) {
       setError("Please specify your designation."); return;
     }
     setLoading(true);
+    setShowReport(false);
     try {
       const res = await fetch("/api/signup", {
         method: "POST",
@@ -2094,10 +2095,16 @@ function AuthPage({ onLogin }) {
         body: JSON.stringify({ name, designation, designationOther, email, mobile }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Signup failed"); setLoading(false); return; }
+      if (!res.ok) {
+        setError(data.error || "Signup failed");
+        setShowReport(res.status >= 500);
+        setLoading(false);
+        return;
+      }
       onLogin(data.user);
     } catch {
       setError("Network error. Please try again.");
+      setShowReport(true);
       setLoading(false);
     }
   }
