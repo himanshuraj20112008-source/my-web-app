@@ -2042,11 +2042,18 @@ function useAuth() {
   return { user, login, logout };
 }
 
+function reportLoginIssue(context) {
+  const msg = `🔔 SentinelX Support Alert\n\nA user faced a SERVER-side issue while: ${context}\nTime: ${new Date().toLocaleString("en-IN")}\n\nPlease check if the backend service needs a resume/restart.`;
+  const url = `https://wa.me/919934916031?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+}
+
 function AuthPage({ onLogin }) {
   const [mode, setMode] = useState("login"); // login | signup
   const [step, setStep] = useState("form"); // form | otp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showReport, setShowReport] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   // signup fields
