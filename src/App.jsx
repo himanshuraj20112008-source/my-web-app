@@ -2148,6 +2148,7 @@ function AuthPage({ onLogin }) {
 
   async function handleVerifyOtp() {
     setError("");
+    setShowReport(false);
     if (!otp.trim()) { setError("Please enter the OTP."); return; }
     setLoading(true);
     try {
@@ -2157,10 +2158,16 @@ function AuthPage({ onLogin }) {
         body: JSON.stringify({ email, otp }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Verification failed"); setLoading(false); return; }
+      if (!res.ok) {
+        setError(data.error || "Verification failed");
+        setShowReport(res.status >= 500);
+        setLoading(false);
+        return;
+      }
       onLogin(data.user);
     } catch {
       setError("Network error. Please try again.");
+      setShowReport(true);
     }
     setLoading(false);
   }
