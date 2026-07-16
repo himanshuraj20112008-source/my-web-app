@@ -2225,7 +2225,16 @@ function AuthPage({ onLogin }) {
               <input className="ifield" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" type="email" style={{padding:"10px 13px",fontSize:13}}/>
             </div>
 
-            {error && <div style={{fontSize:12,color:C.danger,marginBottom:12,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>}
+            {error && (
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:12,color:C.danger,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>
+                {showReport && (
+                  <button onClick={()=>reportLoginIssue(mode==="signup"?"Sign Up":"Login")} style={{marginTop:6,fontSize:11,color:C.cyan,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"Inter,sans-serif"}}>
+                    ⚠️ App not working? Report this issue
+                  </button>
+                )}
+              </div>
+            )}
 
             <button className="btn-prime" disabled={loading} onClick={mode==="signup"?handleSignup:handleLoginStart} style={{width:"100%",padding:"12px",fontSize:13}}>
               {loading ? "⏳ Please wait…" : mode==="signup" ? "Create Account" : "Send OTP"}
