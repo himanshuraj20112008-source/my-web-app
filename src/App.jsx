@@ -2425,8 +2425,11 @@ if (!user) {
             </span>
           </div>
           
-         <button onClick={()=>setShowInstallGuide(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(0,212,255,0.08)",border:"1px solid rgba(0,212,255,0.25)",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
+        <button onClick={()=>setShowInstallGuide(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(0,212,255,0.08)",border:"1px solid rgba(0,212,255,0.25)",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
             📲
+          </button>
+          <button onClick={()=>setShowLegal(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(0,212,255,0.08)",border:"1px solid rgba(0,212,255,0.25)",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
+            📄
           </button>
           <button onClick={()=>{ if(window.confirm("Logout from SentinelX?")) logout(); }} style={{marginLeft:8,padding:"6px 12px",fontSize:11,borderRadius:8,background:"rgba(255,77,79,0.08)",border:"1px solid rgba(255,77,79,0.25)",color:C.danger,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
             🚪 Logout
