@@ -1963,21 +1963,21 @@ function InstallGuideModal({ onClose }) {
 
   const steps = {
     ios: [
-      { icon: "🧭", text: "Safari browser mein ye app kholo (Chrome mein kaam nahi karega)" },
-      { icon: "⬆️", text: "Neeche/upar 'Share' icon (□ with ↑) par tap karo" },
-      { icon: "📲", text: "Neeche scroll karke \"Add to Home Screen\" par tap karo" },
-      { icon: "✅", text: "\"Add\" par tap karo — bas! App aapki home screen par aa jayegi" },
+      { icon: "🧭", text: "Open this app in Safari (this won't work in Chrome)" },
+      { icon: "⬆️", text: "Tap the 'Share' icon (□ with ↑) at the top or bottom" },
+      { icon: "📲", text: "Scroll down and tap \"Add to Home Screen\"" },
+      { icon: "✅", text: "Tap \"Add\" — done! The app will appear on your home screen" },
     ],
     android: [
-      { icon: "⋮", text: "Top-right corner mein 3 dots (⋮ menu) par tap karo" },
-      { icon: "📲", text: "\"Add to Home screen\" ya \"Install app\" option dhundo aur tap karo" },
-      { icon: "✅", text: "\"Install\" / \"Add\" confirm karo — app icon home screen par aa jayega" },
-      { icon: "🚀", text: "Ab aap ise ek normal app ki tarah kholo, bina browser ke!" },
+      { icon: "⋮", text: "Tap the 3 dots (⋮ menu) in the top-right corner" },
+      { icon: "📲", text: "Find and tap \"Add to Home screen\" or \"Install app\"" },
+      { icon: "✅", text: "Confirm \"Install\" / \"Add\" — the app icon will appear on your home screen" },
+      { icon: "🚀", text: "Now open it like a normal app, no browser needed!" },
     ],
     desktop: [
-      { icon: "🔗", text: "Address bar ke right side mein ek install icon (⊕) dhundo" },
-      { icon: "🖱️", text: "Us icon par click karo, phir \"Install\" par click karo" },
-      { icon: "✅", text: "SentinelX ab aapke desktop/taskbar se ek app ki tarah khulega" },
+      { icon: "🔗", text: "Look for an install icon (⊕) on the right side of the address bar" },
+      { icon: "🖱️", text: "Click that icon, then click \"Install\"" },
+      { icon: "✅", text: "SentinelX will now open like a regular app from your desktop/taskbar" },
     ],
   };
 
