@@ -2012,7 +2012,7 @@ function InstallGuideModal({ onClose }) {
 
         {device === "ios" && (
           <div style={{fontSize:11,color:C.warning,background:"rgba(255,193,7,0.08)",border:"1px solid rgba(255,193,7,0.25)",borderRadius:8,padding:"9px 12px",marginBottom:16}}>
-            ⚠️ Note: Yeh sirf Safari mein kaam karta hai. Chrome/Firefox mein "Add to Home Screen" option nahi milega (Apple ka restriction hai).
+            ⚠️ Note: This only works in Safari. Chrome/Firefox won't show the "Add to Home Screen" option (this is an Apple restriction).
           </div>
         )}
 
