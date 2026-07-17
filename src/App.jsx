@@ -2291,8 +2291,17 @@ function AuthPage({ onLogin }) {
             <button className="btn-prime" disabled={loading} onClick={mode==="signup"?handleSignup:handleLoginStart} style={{width:"100%",padding:"12px",fontSize:13}}>
               {loading ? "⏳ Please wait…" : mode==="signup" ? "Create Account" : "Send OTP"}
             </button>
+
+            <p style={{fontSize:11,color:C.muted,textAlign:"center",marginTop:14,lineHeight:1.6}}>
+              By continuing, you agree to our{" "}
+              <span onClick={()=>setShowLegal(true)} style={{color:C.cyan,cursor:"pointer",textDecoration:"underline"}}>
+                Privacy Policy & Terms
+              </span>
+            </p>
           </>
         )}
+
+        {showLegal && <LegalModal onClose={()=>setShowLegal(false)} />}
 
         {step === "otp" && (
           <>
