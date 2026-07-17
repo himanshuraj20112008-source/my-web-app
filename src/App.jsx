@@ -2380,6 +2380,7 @@ useEffect(() => {
 }, []);
 const [defaultTab,setDefaultTab]=useState("upi");
 const [showInstallGuide, setShowInstallGuide] = useState(false);
+const [showLegal, setShowLegal] = useState(false);
 
 useEffect(() => {
 const seen = safeGetItem("sentinelx_install_guide_seen", null);
