@@ -2023,6 +2023,59 @@ function InstallGuideModal({ onClose }) {
     </div>
   );
 }
+
+function LegalModal({ onClose }) {
+  const [tab, setTab] = useState("privacy");
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div className="glass fu" style={{maxWidth:560,width:"100%",padding:26,maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{textAlign:"center",marginBottom:16}}>
+          <div style={{display:"inline-flex",marginBottom:8}}><Shield size={38}/></div>
+          <h2 style={{fontSize:17,fontWeight:700}}>Privacy Policy & Terms</h2>
+        </div>
+        <div style={{display:"flex",gap:6,marginBottom:18,background:"rgba(255,255,255,0.03)",padding:4,borderRadius:10}}>
+          <button onClick={()=>setTab("privacy")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,fontFamily:"Inter,sans-serif",background:tab==="privacy"?`linear-gradient(135deg,${C.cyan},${C.blue})`:"transparent",color:tab==="privacy"?"#000":C.muted}}>Privacy Policy</button>
+          <button onClick={()=>setTab("terms")} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,fontFamily:"Inter,sans-serif",background:tab==="terms"?`linear-gradient(135deg,${C.cyan},${C.blue})`:"transparent",color:tab==="terms"?"#000":C.muted}}>Terms of Service</button>
+        </div>
+        {tab==="privacy" ? (
+          <div style={{fontSize:12.5,color:C.text,lineHeight:1.75}}>
+            <p style={{marginBottom:10}}><strong style={{color:C.cyan}}>Last updated:</strong> {new Date().toLocaleDateString("en-IN",{year:"numeric",month:"long",day:"numeric"})}</p>
+            <p style={{marginBottom:10}}>SentinelX ("we", "our", "the app") respects your privacy. This policy explains what data we collect, why, and how it is handled.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>1. Information We Collect</h4>
+            <p style={{marginBottom:8}}>When you sign up, we collect your name, designation, email address, and mobile number to create and verify your account via one-time password (OTP).</p>
+            <p style={{marginBottom:8}}>When you use the Scanner, Assistant, or report a scam, the text you enter (UPI ID, phone number, email, URL, SMS content, or domain) is sent to our servers and, where relevant, to third-party services (Google Safe Browsing, VirusTotal, NumVerify, and our AI provider) purely to generate a risk analysis.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>2. How We Use Your Data</h4>
+            <p style={{marginBottom:8}}>Your account details are used to log you in and personalize your experience. Scan inputs are used only to compute a risk score and are not sold or shared for advertising.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>3. Local Storage</h4>
+            <p style={{marginBottom:8}}>Your scan history and quiz progress are currently stored locally in your browser, not on our servers, unless you explicitly submit a scam report.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>4. Third-Party Services</h4>
+            <p style={{marginBottom:8}}>We use Google Safe Browsing, VirusTotal, NumVerify, and an AI language model provider to analyze the inputs you scan, under their own respective privacy policies.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>5. Your Rights</h4>
+            <p style={{marginBottom:8}}>You may request deletion of your account and associated data at any time. You can clear your local scan history anytime from the History tab.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>6. Contact</h4>
+            <p style={{marginBottom:4}}>For privacy questions or data deletion requests, reach out via the in-app support option.</p>
+          </div>
+        ) : (
+          <div style={{fontSize:12.5,color:C.text,lineHeight:1.75}}>
+            <p style={{marginBottom:10}}><strong style={{color:C.cyan}}>Last updated:</strong> {new Date().toLocaleDateString("en-IN",{year:"numeric",month:"long",day:"numeric"})}</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>1. Acceptance of Terms</h4>
+            <p style={{marginBottom:8}}>By creating an account or using SentinelX, you agree to these Terms of Service.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>2. Nature of the Service</h4>
+            <p style={{marginBottom:8}}>SentinelX provides risk scores using automated heuristics and AI. Results are informational only and are not a guarantee of safety or fraud. Always independently verify before making any payment or sharing personal information.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>3. No Liability</h4>
+            <p style={{marginBottom:8}}>We are not liable for any financial loss or harm resulting from reliance on results shown by this app.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>4. User Conduct</h4>
+            <p style={{marginBottom:8}}>You agree not to misuse the service, including submitting false scam reports or attempting to overload our systems.</p>
+            <h4 style={{color:C.cyan,marginTop:14,marginBottom:6,fontSize:13}}>5. Changes to Terms</h4>
+            <p style={{marginBottom:8}}>We may update these terms from time to time. Continued use of the app means you accept the updated terms.</p>
+          </div>
+        )}
+        <button className="btn-prime" onClick={onClose} style={{width:"100%",padding:"12px",fontSize:13,marginTop:18}}>Close</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── AUTH SYSTEM ──────────────────────────────────────────────────────────────
 function useAuth() {
   const [user, setUser] = useState(() => {
