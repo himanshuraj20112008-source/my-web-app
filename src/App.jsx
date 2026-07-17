@@ -1994,7 +1994,7 @@ function InstallGuideModal({ onClose }) {
         </div>
 
         <div style={{background:"rgba(0,212,255,0.06)",border:"1px solid rgba(0,212,255,0.2)",borderRadius:10,padding:"12px 14px",marginBottom:18,fontSize:12,color:C.text,lineHeight:1.6}}>
-          💡 SentinelX ko apne home screen par install karo — turant ek tap mein khulega, bina browser address type kiye, bilkul ek normal app ki tarah!
+          💡 Install SentinelX on your home screen — open it instantly with one tap, no need to type the browser address, just like a normal app!
         </div>
 
         <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
