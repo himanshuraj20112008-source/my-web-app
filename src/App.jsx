@@ -2106,6 +2106,7 @@ function AuthPage({ onLogin }) {
   const [error, setError] = useState("");
   const [showReport, setShowReport] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [showLegal, setShowLegal] = useState(false);
 
   // signup fields
   const [name, setName] = useState("");
