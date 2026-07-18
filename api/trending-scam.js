@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       lastUpdated: isNewScam ? now : cached.lastUpdated || now,
     };
 
-    await kv.set("trending_scam", updated);
+    await redis.set("trending_scam", updated);
     return res.status(200).json(updated);
   } catch (err) {
     console.error("trending-scam error:", err);
