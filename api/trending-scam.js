@@ -39,8 +39,8 @@ export default async function handler(req, res) {
         include_domains: trustedDomains,
       }),
     });
-    const tavilyData = await tavilyRes.json();
-    let topResult = tavilyData.results?.[0];
+const tavilyData = await tavilyRes.json();
+    let allResults = tavilyData.results || [];
 
     // Agar trusted domains mein kuch nahi mila, to bina filter ke dobara try karo
     if (!topResult) {
