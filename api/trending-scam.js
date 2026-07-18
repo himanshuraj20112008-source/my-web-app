@@ -7,7 +7,7 @@ const redis = new Redis({
 
 export default async function handler(req, res) {
   try {
-    const cached = await kv.get("trending_scam");
+    const cached = await redis.get("trending_scam");
     const now = Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;
 
