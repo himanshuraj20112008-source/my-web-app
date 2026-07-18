@@ -38,6 +38,7 @@ export default async function handler(req, res) {
 
     const aiData = await aiRes.json();
     const textBlock = aiData.content?.find((b) => b.type === "text");
+    console.log("RAW AI RESPONSE:", JSON.stringify(aiData));
     const clean = (textBlock?.text || "{}").replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 
