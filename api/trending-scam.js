@@ -43,7 +43,7 @@ const tavilyData = await tavilyRes.json();
     let allResults = tavilyData.results || [];
 
     // Agar trusted domains mein kuch nahi mila, to bina filter ke dobara try karo
-    if (!topResult) {
+   if (allResults.length === 0) {
       const fallbackRes = await fetch("https://api.tavily.com/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,17 +52,23 @@ const tavilyData = await tavilyRes.json();
           query: "latest UPI fraud phishing scam trend India news",
           topic: "news",
           search_depth: "basic",
-          max_results: 5,
+          max_results: 8,
           days: 7,
         }),
       });
       const fallbackData = await fallbackRes.json();
-      topResult = fallbackData.results?.[0];
+      allResults = fallbackData.results || [];
     }
 
-    if (!topResult) {
+    if (allResults.length === 0) {
       throw new Error("No search results from Tavily");
     }
+
+    // Groq ko saare articles do, usse SIRF scam/fraud wala chunne do
+    const articleList = allResults
+      .slice(0, 6)
+      .map((r, i) => `[${i}] Title: ${r.title}\nSnippet: ${(r.content || "").slice(0, 200)}`)
+      .join("\n\n");
 
     // ── Step B: Groq us real article ko simple JSON mein summarize karega ──
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
