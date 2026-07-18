@@ -1236,20 +1236,28 @@ function TrendingScamCard() {
         <span style={{ fontSize: 12, fontWeight: 700, color: C.warning, textTransform: "uppercase", letterSpacing: 0.5 }}>
           Trending Scam Alert
         </span>
+        {data.sourceCount > 1 && (
+          <span style={{ fontSize: 10, background: "rgba(0,200,83,0.12)", color: C.success, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>
+            ✓ Verified by {data.sourceCount} sources
+          </span>
+        )}
       </div>
       <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>{data.title}</div>
       <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>{data.description}</div>
       <div style={{ fontSize: 12, color: C.cyan, fontWeight: 600, marginBottom: 10 }}>✅ {data.action}</div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, color: C.muted, flexWrap: "wrap", gap: 6 }}>
-        <span>
-          Source: {data.source}
-          {data.sourceUrl && (
-            <a href={data.sourceUrl} target="_blank" rel="noreferrer" style={{ color: C.cyan, marginLeft: 6 }}>
-              Read article →
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ fontSize: 10, color: C.muted, fontWeight: 600 }}>Sources:</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {(data.sources || []).map((s, i) => (
+            <a key={i} href={s.url} target="_blank" rel="noreferrer"
+              style={{ fontSize: 10, color: C.cyan, background: "rgba(0,212,255,0.08)", border: "1px solid rgba(0,212,255,0.25)", padding: "4px 10px", borderRadius: 20, textDecoration: "none" }}>
+              {s.name} →
             </a>
-          )}
-        </span>
-        <span>Last updated: {new Date(data.lastUpdated).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: C.muted, marginTop: 4, textAlign: "right" }}>
+          Last updated: {new Date(data.lastUpdated).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+        </div>
       </div>
     </div>
   );
