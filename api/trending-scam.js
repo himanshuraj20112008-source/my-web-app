@@ -83,7 +83,7 @@ const tavilyData = await tavilyRes.json();
         messages: [
           {
             role: "user",
-            content: `Based on this real news article, extract scam information for an Indian cybersecurity app. Reply ONLY with JSON, no markdown, no preamble:\n{"title":"short scam name (max 6 words)","description":"2 sentence explanation of how this scam works","action":"1 sentence on what to do"}\n\nArticle title: ${topResult.title}\nArticle content: ${(topResult.content || "").slice(0, 1500)}`,
+            content: `Here are ${allResults.slice(0,6).length} news articles. Pick ONLY the one that is genuinely about a scam, fraud, phishing, or cyber threat in India. If NONE of them are about a scam/fraud/cyber threat, reply with {"noMatch":true}.\n\nIf you find a matching article, reply ONLY with JSON, no markdown, no preamble:\n{"index":<article number>,"title":"short scam name (max 6 words)","description":"2 sentence explanation of how this scam works","action":"1 sentence on what to do"}\n\n${articleList}`,
           },
         ],
       }),
