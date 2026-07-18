@@ -93,12 +93,18 @@ const tavilyData = await tavilyRes.json();
     const clean = groqText.replace(/```json|```/g, "").trim();
     const summary = JSON.parse(clean);
 
+    if (summary.noMatch || summary.index === undefined) {
+      throw new Error("No genuine scam article found in results");
+    }
+
+    const chosen = allResults[summary.index] || allResults[0];
+
     const parsed = {
       title: summary.title,
       description: summary.description,
       action: summary.action,
-      source: new URL(topResult.url).hostname.replace("www.", ""),
-      sourceUrl: topResult.url,
+      source: new URL(chosen.url).hostname.replace("www.", ""),
+      sourceUrl: chosen.url,
     };
 
     // Purane title se compare karke check karo genuinely naya scam hai ya same
