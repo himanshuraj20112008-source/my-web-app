@@ -34,7 +34,7 @@ export default async function handler(req, res) {
         query: "latest UPI fraud phishing scam trend India news",
         topic: "news",
         search_depth: "basic",
-        max_results: 5,
+        max_results: 8,
         days: 7,
         include_domains: trustedDomains,
       }),
