@@ -1215,6 +1215,45 @@ function AIThreatExplanation({ explanation, loading }) {
     </div>
   );
 }
+function TrendingScamCard() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/trending-scam")
+      .then((r) => r.json())
+      .then((d) => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return null;
+  if (!data || data.error || !data.title) return null;
+
+  return (
+    <div className="glass fu" style={{ padding: 18, margin: "0 16px 20px", borderColor: "rgba(255,193,7,0.3)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 18 }}>🚨</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: C.warning, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Trending Scam Alert
+        </span>
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>{data.title}</div>
+      <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>{data.description}</div>
+      <div style={{ fontSize: 12, color: C.cyan, fontWeight: 600, marginBottom: 10 }}>✅ {data.action}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, color: C.muted, flexWrap: "wrap", gap: 6 }}>
+        <span>
+          Source: {data.source}
+          {data.sourceUrl && (
+            <a href={data.sourceUrl} target="_blank" rel="noreferrer" style={{ color: C.cyan, marginLeft: 6 }}>
+              Read article →
+            </a>
+          )}
+        </span>
+        <span>Last updated: {new Date(data.lastUpdated).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+      </div>
+    </div>
+  );
+}
 // ─── SCAN HISTORY ─────────────────────────────────────────────────────────────
 function useScanHistory() {
   const [history, setHistory] = useState(() => {
