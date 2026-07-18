@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     const now = Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;
 
-    if (cached && cached.lastChecked && now - cached.lastChecked < oneDayMs) {
+    if (false) {
       return res.status(200).json(cached);
     }
 
