@@ -131,8 +131,7 @@ ${articleList}`,
     });
    const groqData = await groqRes.json();
     const groqText = groqData.choices?.[0]?.message?.content || "{}";
-    console.log("ARTICLE LIST SENT TO GROQ:", articleList.slice(0, 2000));
-    console.log("GROQ DECISION:", groqText);
+
     const clean = groqText.replace(/```json|```/g, "").trim();
     const summary = JSON.parse(clean);
 
