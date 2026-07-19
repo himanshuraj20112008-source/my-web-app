@@ -23,6 +23,10 @@ const TRUSTED_DOMAINS = [
   "cnbctv18.com",
   "news18.com",
   "zeenews.india.com",
+  "economictimes.indiatimes.com",
+  "moneycontrol.com",
+  "financialexpress.com",
+  "cnbctv18.com",
 ];
 
 const SEARCH_QUERIES = [
