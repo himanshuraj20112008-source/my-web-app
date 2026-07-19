@@ -35,10 +35,10 @@ async function searchTavily(query, useDomainFilter) {
   const body = {
     api_key: process.env.TAVILY_API_KEY,
     query,
-    topic: "news",
-    search_depth: "basic",
+    topic: "general",
+    search_depth: "advanced",
     max_results: 6,
-    days: 7,
+    days: 20,
   };
   if (useDomainFilter) body.include_domains = TRUSTED_DOMAINS;
 
