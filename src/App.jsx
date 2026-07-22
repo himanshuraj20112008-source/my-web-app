@@ -1423,8 +1423,6 @@ function HomePage({ setPage, setDefaultTab }) {
           <button className="btn-ghost" style={{padding:"13px 22px",fontSize:14}} onClick={()=>setPage("Assistant")}>🤖 Ask AI</button>
         </div>
       </div>
-      <TrendingScamCard/>
-
       <div style={{padding:"0 12px 16px"}}>
         <h2 style={{textAlign:"center",fontSize:14,fontWeight:600,marginBottom:2}}>Comprehensive Security Toolkit</h2>
         <p style={{textAlign:"center",color:C.muted,fontSize:11,marginBottom:10}}>Hybrid rule engine + AI — built to replace simple keyword checkers</p>
