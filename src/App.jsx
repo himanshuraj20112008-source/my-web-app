@@ -2460,6 +2460,8 @@ function closeInstallGuide() {
 }
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
 const { user, login, logout } = useAuth();
+const { data: scamAlertData, loading: scamAlertLoading } = useScamAlert();
+const [showScamAlert, setShowScamAlert] = useState(false);
 
 if (!user) {
   return <ErrorBoundary><AuthPage onLogin={login} /></ErrorBoundary>;
