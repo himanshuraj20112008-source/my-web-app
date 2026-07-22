@@ -1215,49 +1215,67 @@ function AIThreatExplanation({ explanation, loading }) {
     </div>
   );
 }
-function TrendingScamCard() {
+function useScamAlert() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     fetch("/api/trending-scam")
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+  return { data, loading };
+}
 
-  if (loading) return null;
-  if (!data || data.error || !data.title) return null;
-
+function ScamAlertModal({ data, loading, onClose }) {
   return (
-    <div className="glass fu" style={{ padding: 18, margin: "0 16px 20px", borderColor: "rgba(255,193,7,0.3)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 18 }}>🚨</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: C.warning, textTransform: "uppercase", letterSpacing: 0.5 }}>
-          Trending Scam Alert
-        </span>
-        {data.sourceCount > 1 && (
-          <span style={{ fontSize: 10, background: "rgba(0,200,83,0.12)", color: C.success, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>
-            ✓ Verified by {data.sourceCount} sources
-          </span>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div className="glass fu" style={{maxWidth:480,width:"100%",padding:26,maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:20}}>🚨</span>
+            <h2 style={{fontSize:16,fontWeight:700}}>Trending Scam Alert</h2>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:C.muted,fontSize:20,cursor:"pointer"}}>✕</button>
+        </div>
+
+        {loading && (
+          <div style={{padding:"40px 0",textAlign:"center"}}>
+            <div style={{width:36,height:36,border:"3px solid rgba(0,212,255,0.15)",borderTop:`3px solid ${C.cyan}`,borderRadius:"50%",animation:"spin 0.9s linear infinite",margin:"0 auto 14px"}}/>
+            <p style={{color:C.cyan,fontSize:13}}>Checking latest scam reports across trusted sources…</p>
+          </div>
         )}
-      </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>{data.title}</div>
-      <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>{data.description}</div>
-      <div style={{ fontSize: 12, color: C.cyan, fontWeight: 600, marginBottom: 10 }}>✅ {data.action}</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={{ fontSize: 10, color: C.muted, fontWeight: 600 }}>Sources:</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {(data.sources || []).map((s, i) => (
-            <a key={i} href={s.url} target="_blank" rel="noreferrer"
-              style={{ fontSize: 10, color: C.cyan, background: "rgba(0,212,255,0.08)", border: "1px solid rgba(0,212,255,0.25)", padding: "4px 10px", borderRadius: 20, textDecoration: "none" }}>
-              {s.name} →
-            </a>
-          ))}
-        </div>
-        <div style={{ fontSize: 10, color: C.muted, marginTop: 4, textAlign: "right" }}>
-          Last updated: {new Date(data.lastUpdated).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-        </div>
+
+        {!loading && (!data || data.error || !data.title) && (
+          <div style={{padding:"30px 0",textAlign:"center",color:C.muted,fontSize:13}}>
+            No active scam alert right now. Check back later.
+          </div>
+        )}
+
+        {!loading && data && !data.error && data.title && (
+          <div>
+            {data.sourceCount > 1 && (
+              <span style={{ fontSize: 10, background: "rgba(0,200,83,0.12)", color: C.success, padding: "2px 8px", borderRadius: 20, fontWeight: 700, display:"inline-block", marginBottom:10 }}>
+                ✓ Verified by {data.sourceCount} sources
+              </span>
+            )}
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>{data.title}</div>
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>{data.description}</div>
+            <div style={{ fontSize: 12, color: C.cyan, fontWeight: 600, marginBottom: 12 }}>✅ {data.action}</div>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 600, marginBottom:6 }}>Sources:</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom:10 }}>
+              {(data.sources || []).map((s, i) => (
+                <a key={i} href={s.url} target="_blank" rel="noreferrer"
+                  style={{ fontSize: 10, color: C.cyan, background: "rgba(0,212,255,0.08)", border: "1px solid rgba(0,212,255,0.25)", padding: "4px 10px", borderRadius: 20, textDecoration: "none" }}>
+                  {s.name} →
+                </a>
+              ))}
+            </div>
+            <div style={{ fontSize: 10, color: C.muted, textAlign: "right" }}>
+              Last updated: {new Date(data.lastUpdated).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
