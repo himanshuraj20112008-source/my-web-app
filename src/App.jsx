@@ -2491,6 +2491,12 @@ if (!user) {
             </span>
           </div>
           
+        <button onClick={()=>setShowScamAlert(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(255,193,7,0.08)",border:"1px solid rgba(255,193,7,0.25)",color:C.warning,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,position:"relative"}}>
+            🚨
+            {!scamAlertLoading && scamAlertData && !scamAlertData.error && scamAlertData.title && (
+              <span style={{position:"absolute",top:2,right:2,width:7,height:7,borderRadius:"50%",background:C.danger,border:"1.5px solid #080E1C"}}/>
+            )}
+          </button>
         <button onClick={()=>setShowInstallGuide(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(0,212,255,0.08)",border:"1px solid rgba(0,212,255,0.25)",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
             📲
           </button>
