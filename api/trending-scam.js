@@ -122,8 +122,7 @@ export default async function handler(req, res) {
 
 2. DO NOT count articles about: general crime news, insurance fraud detection systems, government policy/schemes, corporate fraud, court cases, arrests without scam method details, or anything not directly a scam technique used against individuals.
 
-3. Group articles that describe the SAME or a VERY SIMILAR scam pattern together. Pick the group with the MOST articles (most cross-source verification = most trending). If there's a tie, pick the most recent/severe one.
-
+3. Group articles that describe the SAME or a VERY SIMILAR scam pattern together. Pick the group with the MOST articles (most cross-source verification = most trending). If there's a tie, prefer the most recent/severe one, AND prefer a more specific or newly-emerging pattern over a broad, generic, long-covered category like general UPI fraud — unless the UPI-related articles describe a genuinely new tactic, fraud ring, or fresh official advisory.
 4. If NO articles qualify at all, reply ONLY with: {"noMatch":true}
 
 If you find a qualifying group, reply ONLY with JSON, no markdown, no preamble:
