@@ -33,6 +33,11 @@ const SEARCH_QUERIES = [
   "UPI payment fraud scam alert India",
   "phishing OTP fraud scam India news",
   "digital arrest KYC scam fraud India",
+  "job work from home scam fraud India",
+  "investment trading app scam fraud India",
+  "loan app fraud harassment India",
+  "SIM swap fraud scam India",
+  "fake customer care scam India",
 ];
 
 async function searchTavily(query, useDomainFilter) {
