@@ -991,7 +991,52 @@ const RISK_ENGINE = {
     };
   },
 
- async domain(raw) {
+ async password(raw) {
+    const pwd = raw;
+    const indicators = [], weights = [];
+    let pwnedCount = 0, isPwned = false;
+
+    if (pwd.length < 8) { indicators.push("⚠️ Password is shorter than 8 characters — weak"); weights.push(20); }
+    if (!/[A-Z]/.test(pwd)) { indicators.push("No uppercase letter used"); weights.push(8); }
+    if (!/[a-z]/.test(pwd)) { indicators.push("No lowercase letter used"); weights.push(8); }
+    if (!/[0-9]/.test(pwd)) { indicators.push("No number used"); weights.push(8); }
+    if (!/[^A-Za-z0-9]/.test(pwd)) { indicators.push("No special character used"); weights.push(8); }
+
+    try {
+      const res = await fetch("/api/check-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pwd }),
+      });
+      const data = await res.json();
+      isPwned = data.pwned;
+      pwnedCount = data.count || 0;
+      if (isPwned) {
+        indicators.push(`🚨 Found in ${pwnedCount.toLocaleString()} known data breaches!`);
+        weights.push(90);
+      } else {
+        indicators.push("✅ Not found in known data breaches");
+        weights.push(-10);
+      }
+    } catch {
+      indicators.push("⚠️ Breach check unavailable — try again");
+    }
+
+    const score = Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
+    const level = score>=75?"critical":score>=50?"high":score>=25?"medium":"low";
+
+    return {
+      score, level, isPwned, pwnedCount,
+      indicators: indicators.length ? indicators : ["Password appears strong"],
+      recommendation: isPwned
+        ? "This password has previously appeared in a data breach and should never be used. If you've ever used it anywhere before, change it immediately!"
+        : score>=25
+        ? "Password not breached, but could be stronger. Add length, symbols, and mixed case."
+        : "Good password hygiene. Still, use a unique password for every account.",
+    };
+  },
+
+  async domain(raw) {
     const domain = raw.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
     const indicators = [], weights = [];
 
