@@ -1476,8 +1476,7 @@ function HomePage({ setPage, setDefaultTab }) {
     {icon:"📧",t:"Email Verifier",d:"Disposable provider, spoofed domain & phishing indicator checks"},
     {icon:"💬",t:"SMS Scam Detector",d:"AI-powered message classification with pattern & keyword scoring"},
     {icon:"🌐",t:"Domain Intel",d:"Threat reputation, brand impersonation & entropy-based risk scoring"},
-    {icon:"🤖",t:"AI Assistant",d:"Ask cybersecurity questions — powered by AI"},
-    {icon:"🎓",t:"Learn & Quiz",d:"Interactive lessons and quizzes to sharpen your cyber awareness"},
+    {icon:"🔑",t:"Password Checker",d:"Check if your password has appeared in known data breaches"},
   ];
   return (
     <div className="fu">
