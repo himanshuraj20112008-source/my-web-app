@@ -1563,9 +1563,10 @@ function ScannerPage({ addScan, defaultTab="upi" }) {
     else if (tab==="url") r=await RISK_ENGINE.url(input);
     else if (tab==="phone") r=await RISK_ENGINE.phone(input);
     else if (tab==="sms") r=await RISK_ENGINE.sms(input);
+    else if (tab==="password") r=await RISK_ENGINE.password(input);
    else r=RISK_ENGINE[tab]?await RISK_ENGINE[tab](input):{score:0,level:"low",indicators:["Scanner not implemented yet"],recommendation:""};
    setResult(r); setLoading(false);
-addScan(tab, input, r.score, r.level);
+addScan(tab, tab==="password" ? "•".repeat(Math.min(input.length,12)) : input, r.score, r.level);
 
     if (r.score >= 0) {
       setAiLoading(true);
