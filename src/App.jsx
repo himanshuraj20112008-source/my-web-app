@@ -1719,6 +1719,7 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
   </div>
 )}
             {tab==="phone"&&<NumVerifyCard data={result.numVerifyData}/>}
+            {tab==="password"&&<PwnedPasswordCard isPwned={result.isPwned} pwnedCount={result.pwnedCount}/>}
           </div>
 
           <div className="glass" style={{padding:18,marginBottom:12}}>
