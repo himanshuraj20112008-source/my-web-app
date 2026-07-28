@@ -1228,6 +1228,33 @@ function NumVerifyCard({ data }) {
   );
 }
 
+function PwnedPasswordCard({ isPwned, pwnedCount }) {
+  if (isPwned === undefined) return null;
+  if (isPwned) {
+    return (
+      <div style={{marginTop:10,padding:"26px 20px",borderRadius:14,background:"rgba(255,77,79,0.10)",border:"1px solid rgba(255,77,79,0.35)",textAlign:"center"}}>
+        <div style={{fontSize:30,marginBottom:10}}>🛡️</div>
+        <div style={{fontSize:20,fontWeight:800,color:C.danger,marginBottom:10}}>Oh no — pwned!</div>
+        <div style={{fontSize:14,color:C.text,marginBottom:10,lineHeight:1.6}}>
+          This password has been seen <strong style={{color:C.danger}}>{pwnedCount.toLocaleString()}</strong> times before in data breaches!
+        </div>
+        <div style={{fontSize:12,color:"#FFB3B3",lineHeight:1.6}}>
+          This password has previously appeared in a data breach and should never be used. If you've ever used it anywhere before, change it immediately!
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{marginTop:10,padding:"26px 20px",borderRadius:14,background:"rgba(0,200,83,0.08)",border:"1px solid rgba(0,200,83,0.3)",textAlign:"center"}}>
+      <div style={{fontSize:30,marginBottom:10}}>✅</div>
+      <div style={{fontSize:20,fontWeight:800,color:C.success,marginBottom:10}}>Good news — not pwned!</div>
+      <div style={{fontSize:13,color:C.text,lineHeight:1.6}}>
+        This password wasn't found in any known data breach. Still, use a unique, strong password for every account.
+      </div>
+    </div>
+  );
+}
+
 function AIThreatExplanation({ explanation, loading }) {
   if (!explanation && !loading) return null;
   const sections = explanation ? explanation.split("\n").filter(l => l.trim()) : [];
