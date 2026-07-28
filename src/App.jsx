@@ -1504,13 +1504,9 @@ function HomePage({ setPage, setDefaultTab }) {
               onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(0,212,255,.35)";e.currentTarget.style.transform="translateY(-2px)"}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.transform=""}}
              onClick={()=>{
-  if(f.t==="AI Assistant"){setPage("Assistant");}
-  else if(f.t==="Learn & Quiz"){setPage("Learn");}
-  else{
-    const tabMap={"UPI Fraud Guard":"upi","URL Analyzer":"url","Phone Checker":"phone","Email Verifier":"email","SMS Scam Detector":"sms","Domain Intel":"domain"};
+    const tabMap={"UPI Fraud Guard":"upi","URL Analyzer":"url","Phone Checker":"phone","Email Verifier":"email","SMS Scam Detector":"sms","Domain Intel":"domain","Password Checker":"password"};
     setDefaultTab(tabMap[f.t]||"upi");
     setPage("Scanner");
-  }
 }}>
               <div style={{fontSize:18,marginBottom:4}}>{f.icon}</div>
               <div style={{fontWeight:600,fontSize:11,marginBottom:2}}>{f.t}</div>
