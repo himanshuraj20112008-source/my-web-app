@@ -1381,6 +1381,7 @@ const SCAN_TYPES = [
   {id:"email",label:"Email",icon:"📧",ph:"user@domain.com"},
   {id:"sms",label:"SMS/Text",icon:"💬",ph:"Paste suspicious message…",big:true},
   {id:"domain",label:"Domain",icon:"🌐",ph:"suspicious-site.xyz"},
+  {id:"password",label:"Password",icon:"🔑",ph:"Enter password to check…",mask:true},
 ];
 
 function HomePage({ setPage, setDefaultTab }) {
