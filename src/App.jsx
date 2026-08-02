@@ -998,8 +998,6 @@ const RISK_ENGINE = {
 
     const kws = DB.suspiciousKeywords.sms.filter(k => textLower.includes(k));
     if (kws.length) { indicators.push(`High-risk keywords: ${kws.slice(0,5).join(", ")}`); weights.push(kws.length * 12); }
-    if (/https?:\/\/[^\s]+/i.test(text)) { indicators.push("Contains URL — inspect before clicking"); weights.push(20); }
-    if (/bit\.ly|tinyurl|t\.co|short\./i.test(text)) { indicators.push("Shortened URL detected"); weights.push(25); }
     if (/\d{4,6}.*otp|otp.*\d{4,6}/i.test(text)) { indicators.push("Requests OTP — banks never ask via SMS"); weights.push(55); }
     if (/₹|rs\.?\s*\d|lakh|crore/i.test(text)) { indicators.push("Monetary amount mentioned — financial bait"); weights.push(20); }
     if (/won|winner|selected|congratulations|lucky/i.test(text)) { indicators.push("Prize/lottery language detected"); weights.push(35); }
@@ -1007,28 +1005,55 @@ const RISK_ENGINE = {
     if (/account.*block|suspend|deactivat/i.test(text)) { indicators.push("Threat-based manipulation pattern"); weights.push(30); }
     if (/click here|tap here|download now/i.test(text)) { indicators.push("Directive click action — common in phishing"); weights.push(22); }
 
+    // ── Real URL risk check — same upgraded engine as URL tab ──────────
+    // Ab SMS aur URL tab, dono ek hi link ke liye same score denge,
+    // kyunki dono ekhi RISK_ENGINE.url() function call kar rahe hain
+    // (jisme GSB + shortener + WHOIS age + VirusTotal sab included hai).
     const urlMatches = text.match(/https?:\/\/[^\s]+/gi) || [];
-    for (const url of urlMatches.slice(0, 3)) {
-      try {
-        const gsb = await callGoogleSafeBrowsing(url);
-        if (gsb.status === "danger") { indicators.push(`🚨 URL flagged by Google Safe Browsing: ${url.slice(0,40)}`); weights.push(85); }
-        else if (gsb.status === "safe") { indicators.push(`✅ URL checked safe: ${url.slice(0,40)}`); }
-      } catch { indicators.push(`⚠️ URL check failed`); }
+    let urlRiskSummary = "No links found in message.";
+    let maxUrlScore = 0;
+
+    if (urlMatches.length) {
+      indicators.push(`🔗 Contains ${urlMatches.length} link(s) — verifying each with full URL engine`);
+      const urlSummaries = [];
+
+      for (const url of urlMatches.slice(0, 3)) {
+        try {
+          const urlResult = await RISK_ENGINE.url(url); // <-- upgraded engine from Step 1
+          maxUrlScore = Math.max(maxUrlScore, urlResult.score);
+          const shortUrl = url.length > 45 ? url.slice(0,45)+"…" : url;
+
+          if (urlResult.score >= 75) {
+            indicators.push(`🚨 Link "${shortUrl}" is CRITICAL risk (${urlResult.score}/100)`);
+          } else if (urlResult.score >= 50) {
+            indicators.push(`⚠️ Link "${shortUrl}" is HIGH risk (${urlResult.score}/100)`);
+          } else if (urlResult.score >= 25) {
+            indicators.push(`⚠️ Link "${shortUrl}" has some concerns (${urlResult.score}/100)`);
+          } else {
+            indicators.push(`✅ Link "${shortUrl}" verified safe (${urlResult.score}/100) — GSB + domain age + VirusTotal checked`);
+          }
+          urlSummaries.push(`${shortUrl} => ${urlResult.score}/100 (${urlResult.level})`);
+        } catch {
+          indicators.push(`⚠️ Could not verify link: ${url.slice(0,40)}`);
+        }
+      }
+      weights.push(maxUrlScore * 0.6);
+      urlRiskSummary = urlSummaries.join(" | ");
     }
 
     try {
       const aiReply = await callAI({
-        messages: [{ role: "user", content: `Analyze this SMS for scam/phishing. Reply ONLY with JSON, no markdown:\n{"riskScore":<0-100>,"category":"<safe|suspicious|scam|phishing|fraud>","reason":"<one line>","hindiDetected":<true|false>}\n\nSMS: "${text.slice(0,500)}"` }],
-        system: "You are a cybersecurity SMS analyzer. Detect scams in Hindi, Hinglish, English. Reply ONLY with valid JSON, nothing else."
+        messages: [{ role: "user", content: `Analyze this SMS for scam/phishing. Any link(s) in this SMS have ALREADY been verified by a separate URL security engine (Google Safe Browsing + WHOIS domain age + VirusTotal) — treat that as ground truth, do NOT re-guess link safety yourself.\n\nVerified link risk: ${urlRiskSummary}\n\nReply ONLY with JSON, no markdown:\n{"riskScore":<0-100>,"category":"<safe|suspicious|scam|phishing|fraud>","reason":"<one line, focus on the message TEXT/wording, not the link since that's already verified>","hindiDetected":<true|false>}\n\nSMS: "${text.slice(0,500)}"` }],
+        system: "You are a cybersecurity SMS analyzer. Judge scams based on message WORDING and manipulation tactics (urgency, prize claims, OTP requests, impersonation, threats). Trust the pre-verified link risk data given to you instead of guessing about links yourself. Reply ONLY with valid JSON, nothing else."
       });
       const clean = aiReply.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(clean);
       if (parsed.hindiDetected) indicators.push(`🤖 AI: Hindi/Hinglish message detected — analyzed in context`);
       if (parsed.reason) indicators.push(`🤖 AI Assessment: ${parsed.reason}`);
-      if (parsed.riskScore >= 70) weights.push(parsed.riskScore * 0.6);
-      else if (parsed.riskScore >= 40) weights.push(parsed.riskScore * 0.4);
-      if (parsed.category === "scam" || parsed.category === "fraud") { indicators.push(`🚨 AI Category: ${parsed.category.toUpperCase()} detected`); weights.push(30); }
-      else if (parsed.category === "phishing") { indicators.push(`🚨 AI Category: PHISHING detected`); weights.push(35); }
+      if (parsed.riskScore >= 70) weights.push(parsed.riskScore * 0.5);
+      else if (parsed.riskScore >= 40) weights.push(parsed.riskScore * 0.3);
+      if (parsed.category === "scam" || parsed.category === "fraud") { indicators.push(`🚨 AI Category: ${parsed.category.toUpperCase()} detected`); weights.push(25); }
+      else if (parsed.category === "phishing") { indicators.push(`🚨 AI Category: PHISHING detected`); weights.push(30); }
       else if (parsed.category === "safe") { indicators.push(`✅ AI Category: Message appears safe`); weights.push(-5); }
     } catch { indicators.push("⚠️ AI analysis unavailable — keyword engine used"); }
 
