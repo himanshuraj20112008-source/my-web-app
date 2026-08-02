@@ -851,6 +851,7 @@ const RISK_ENGINE = {
     const domain = rawUrl.replace(/^https?:\/\//, "").split("/")[0].toLowerCase();
     const indicators = [], weights = [];
     let gsbBadge = null;
+    let domainAgeFlag = null;
 
     // ── 1. Protocol check ───────────────────────────────────────
     if (rawUrl.startsWith("http://")) {
@@ -922,11 +923,64 @@ const RISK_ENGINE = {
       gsbBadge = "unavailable";
     }
 
+    // ── 9. NEW: Real domain-level check — WHOIS age + VirusTotal ──
+    // Yehi missing piece tha. Pattern-match "kuch bura nahi mila" ke bajaye
+    // ab hum actual proof lete hain: domain kitna purana hai, VT ke
+    // multiple scan engines ne isko malicious flag kiya hai ya nahi.
+    let realtimeDomainData = null;
+    try {
+      const res = await fetch("/api/analyze-domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+      realtimeDomainData = await res.json();
+
+      if (realtimeDomainData.virusTotal?.available) {
+        const vt = realtimeDomainData.virusTotal;
+        if (vt.malicious >= 5) {
+          indicators.push(`🚨 VirusTotal: ${vt.malicious}/${vt.total} engines flagged MALICIOUS`);
+          weights.push(85);
+        } else if (vt.malicious >= 1) {
+          indicators.push(`⚠️ VirusTotal: ${vt.malicious}/${vt.total} engines flagged suspicious`);
+          weights.push(40);
+        } else {
+          indicators.push(`✅ VirusTotal: Clean (0/${vt.total} engines flagged)`);
+          weights.push(-10);
+        }
+      }
+
+      if (realtimeDomainData.whois?.available) {
+        const w = realtimeDomainData.whois;
+        indicators.push(`📅 Domain age: ${w.ageLabel || "Unknown"}`);
+        if (w.ageDays !== null && w.ageDays < 30) {
+          indicators.push("🚨 Domain registered less than 30 days ago — high-risk pattern for scams");
+          weights.push(55);
+          domainAgeFlag = "🔴 Very New Domain";
+        } else if (w.ageDays !== null && w.ageDays < 90) {
+          weights.push(30);
+          domainAgeFlag = "🟠 New Domain";
+        } else if (w.ageDays !== null && w.ageDays > 730) {
+          indicators.push("✅ Domain is well-established (2+ years old)");
+          weights.push(-10);
+        }
+      }
+
+      if (realtimeDomainData.ssl?.available) {
+        const s = realtimeDomainData.ssl;
+        if (!s.hasSSL) { indicators.push("🔴 No SSL certificate found for this domain"); weights.push(20); }
+        else if (s.isExpired) { indicators.push("🔴 SSL certificate EXPIRED"); weights.push(30); }
+        else if (s.isTrustedIssuer) { indicators.push(`✅ Valid SSL from trusted CA (${s.issuer})`); weights.push(-5); }
+      }
+    } catch {
+      indicators.push("⚠️ Domain reputation check (WHOIS/VirusTotal) unavailable");
+    }
+
     const score = Math.min(Math.max(weights.reduce((a,b)=>a+b,0),0),100);
     const level = score>=75?"critical":score>=50?"high":score>=25?"medium":"low";
 
     return {
-      score, level, gsbBadge,
+      score, level, gsbBadge, domainAgeFlag, realtimeDomainData,
       indicators: indicators.length ? indicators : ["No suspicious patterns detected"],
       recommendation: score>=75
         ? "🚨 Do NOT visit this URL. Strong phishing/malware indicators found. Report and block."
@@ -934,7 +988,7 @@ const RISK_ENGINE = {
         ? "Suspicious URL. Avoid entering any personal or payment information."
         : score>=25
         ? "Some concerns found. Verify the destination before clicking."
-        : "URL appears low-risk. Always check for HTTPS and verify the domain independently."
+        : "URL appears low-risk — verified via Safe Browsing, domain age, and VirusTotal. Always double-check before entering sensitive data."
     };
   },
   async sms(raw) {
