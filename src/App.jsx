@@ -195,6 +195,15 @@ const DB = {
     domain: ["login","secure","verify","account","update","confirm","bank","wallet","pay","reward","free","win","prize","offer","cheap","discount","deal"],
     url: ["login","secure","verify","account","update","bank","wallet","pay","free","win","prize","phish","malware","trojan","hack","crack","keygen","warez"],
   },
+  piracyKeywords: [
+    "doflix","filmyzilla","filmywap","filmyhit","filmy4wap","movierulz","tamilrockers",
+    "tamilyogi","tamilmv","9xmovies","hdhub4u","hdmovie","vegamovies","katmoviehd",
+    "moviesflix","worldfree4u","khatrimaza","bolly4u","skymovieshd","7starhd",
+    "mp4moviez","isaimini","kuttymovies","todaypk","coolmoviez","extramovies",
+    "downloadhub","apkmod","modapk","apkcrack","nulledapk","fmovies","putlocker",
+    "soap2day","gomovies","123movies","yesmovies","losmovies","sflix",
+  ],
+  communityReports: {
   communityReports: {
     "9876540001":{ reports:12, lastSeen:"2024-11-12", category:"fake KYC" },
     "8800990011":{ reports:8, lastSeen:"2024-10-30", category:"investment scam" },
