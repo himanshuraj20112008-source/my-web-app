@@ -897,6 +897,14 @@ const RISK_ENGINE = {
       weights.push(45);
     }
 
+    // ── 5.5. Piracy / Illegal Streaming Site Detection ──────────
+    const piracyHit = DB.piracyKeywords.find(p => domain.includes(p));
+    if (piracyHit) {
+      indicators.push(`🚨 Piracy/illegal content site detected — matches known pattern "${piracyHit}"`);
+      indicators.push("⚠️ Downloading from such sites is risky — often carries malware-laced ads and may violate copyright law");
+      weights.push(50);
+    }
+
     // ── 6. Excessive hyphens / digits / length ──────────────────
     if ((domain.match(/-/g) || []).length > 2) {
       indicators.push("Multiple hyphens — common phishing pattern");
