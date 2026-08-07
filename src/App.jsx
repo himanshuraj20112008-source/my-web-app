@@ -204,7 +204,6 @@ const DB = {
     "soap2day","gomovies","123movies","yesmovies","losmovies","sflix",
   ],
   communityReports: {
-  communityReports: {
     "9876540001":{ reports:12, lastSeen:"2024-11-12", category:"fake KYC" },
     "8800990011":{ reports:8, lastSeen:"2024-10-30", category:"investment scam" },
     "help@lottery-india.com":{ reports:34, lastSeen:"2024-11-05", category:"lottery scam" },
