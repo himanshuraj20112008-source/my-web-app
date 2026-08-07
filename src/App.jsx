@@ -1156,6 +1156,13 @@ const RISK_ENGINE = {
     const hit = simDomains.find(s => domain.includes(s) && !domain.endsWith(`${s}.com`) && !domain.endsWith(`${s}.in`));
     if (hit) { indicators.push(`Brand impersonation: mimics "${hit}"`); weights.push(40); }
 
+    // ── Piracy / Illegal Streaming Site Detection ────────────────
+    const piracyHit = DB.piracyKeywords.find(p => domain.includes(p));
+    if (piracyHit) {
+      indicators.push(`Piracy/illegal content site detected — matches known pattern "${piracyHit}"`);
+      weights.push(50);
+    }
+
     // ── Real-time API check ───────────────────────────────────────
     let realtime = null;
     try {
