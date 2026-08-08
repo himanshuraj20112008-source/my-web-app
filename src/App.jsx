@@ -1097,19 +1097,31 @@ const RISK_ENGINE = {
     if (!/[0-9]/.test(pwd)) { indicators.push("No number used"); weights.push(8); }
     if (!/[^A-Za-z0-9]/.test(pwd)) { indicators.push("No special character used"); weights.push(8); }
 
+    // ── k-Anonymity Breach Check (HaveIBeenPwned Range API) ────────
+    // Password ko browser ke andar hi hash kiya jaata hai — asli
+    // password kabhi bhi device se bahar nahi jaata. Sirf hash ka
+    // pehle 5 characters ka prefix backend/API ko bheja jaata hai.
     try {
-      const res = await fetch("/api/check-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: pwd }),
-      });
-      const data = await res.json();
-      isPwned = data.pwned;
-      pwnedCount = data.count || 0;
-      if (isPwned) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(pwd);
+      const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const fullHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+      const prefix = fullHash.slice(0, 5);
+      const suffix = fullHash.slice(5);
+
+      const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+      const text = await res.text();
+      const lines = text.split("\n");
+      const match = lines.find(line => line.split(":")[0].trim() === suffix);
+
+      if (match) {
+        isPwned = true;
+        pwnedCount = parseInt(match.split(":")[1].trim(), 10) || 0;
         indicators.push(`🚨 Found in ${pwnedCount.toLocaleString()} known data breaches!`);
         weights.push(90);
       } else {
+        isPwned = false;
         indicators.push("✅ Not found in known data breaches");
         weights.push(-10);
       }
