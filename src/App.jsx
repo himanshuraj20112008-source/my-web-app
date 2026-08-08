@@ -938,6 +938,35 @@ const RISK_ENGINE = {
       indicators.push("⚠️ Google Safe Browsing check unavailable");
       gsbBadge = "unavailable";
     }
+    // ── 8.5. IPQS Secondary Signal (catches unknown piracy/malware sites) ──
+    try {
+      const ipqsRes = await fetch("/api/check-piracy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: fullUrl }),
+      });
+      const ipqs = await ipqsRes.json();
+      if (ipqs.available) {
+        if (ipqs.malware) {
+          indicators.push("🚨 IPQS: Malware detected on this site");
+          weights.push(70);
+        }
+        if (ipqs.phishing) {
+          indicators.push("🚨 IPQS: Phishing indicators detected");
+          weights.push(70);
+        }
+        if (ipqs.suspicious && !ipqs.malware && !ipqs.phishing) {
+          indicators.push(`⚠️ IPQS: Flagged as suspicious (risk score: ${ipqs.riskScore})`);
+          weights.push(35);
+        }
+        if (ipqs.category && /piracy|torrent|streaming|copyright/i.test(ipqs.category)) {
+          indicators.push(`🚨 IPQS: Categorized as "${ipqs.category}" — likely piracy-related`);
+          weights.push(40);
+        }
+      }
+    } catch {
+      // silent fail — IPQS is a bonus signal, not critical
+    }
 
     // ── 9. NEW: Real domain-level check — WHOIS age + VirusTotal ──
     // Yehi missing piece tha. Pattern-match "kuch bura nahi mila" ke bajaye
