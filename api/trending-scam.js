@@ -125,7 +125,10 @@ export default async function handler(req, res) {
 2. DO NOT count articles about: general crime news, insurance fraud detection systems, government policy/schemes, corporate fraud, court cases, arrests without scam method details, or anything not directly a scam technique used against individuals.
 
 3. Group articles that describe the SAME or a VERY SIMILAR scam pattern together. Pick the group with the MOST articles (most cross-source verification = most trending). If there's a tie, prefer the most recent/severe one, AND prefer a more specific or newly-emerging pattern over a broad, generic, long-covered category like general UPI fraud — unless the UPI-related articles describe a genuinely new tactic, fraud ring, or fresh official advisory.
-4. If NO articles qualify at all, reply ONLY with: {"noMatch":true}
+
+4. IMPORTANT — Avoid repeating recent topics: These scam titles were already shown in the last few checks: ${recentTitles.length ? recentTitles.join(", ") : "none"}. If a genuinely DIFFERENT qualifying scam pattern exists in the articles below (even with fewer articles, as long as it has at least 2 supporting articles), PREFER that over repeating one of the recent titles above. Only repeat a recent title if NO other qualifying pattern exists at all.
+
+5. If NO articles qualify at all, reply ONLY with: {"noMatch":true}
 
 If you find a qualifying group, reply ONLY with JSON, no markdown, no preamble:
 {"title":"short scam name (max 6 words)","description":"2-3 sentence explanation of how this scam works, written simply for a general Indian audience","action":"1 sentence on what to do to protect yourself","matchedIndices":[list of article numbers that describe this same scam]}
