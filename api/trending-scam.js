@@ -184,6 +184,10 @@ ${articleList}`,
       lastUpdated: isNewScam ? now : cached.lastUpdated || now,
     };
 
+   // Recent titles history update karo (last 3 rakho, taaki agli baar avoid ho sakein)
+    const updatedRecentTitles = [parsed.title, ...recentTitles.filter(t => t.toLowerCase() !== parsed.title.toLowerCase())].slice(0, 3);
+    await redis.set("recent_scam_titles", updatedRecentTitles);
+
     await redis.set("trending_scam", updated);
     return res.status(200).json(updated);
   } catch (err) {
