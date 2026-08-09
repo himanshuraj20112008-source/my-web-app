@@ -66,6 +66,8 @@ export default async function handler(req, res) {
     const now = Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;
 
+    // Pichli 3 baar jo scam titles dikhaye the, unki history nikalo
+    const recentTitles = (await redis.get("recent_scam_titles")) || [];
     // Agar last check 24 ghante se kam purana hai, to wahi purana data bhej do
     if (cached && cached.lastChecked && now - cached.lastChecked < oneDayMs) {
       return res.status(200).json(cached);
