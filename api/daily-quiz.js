@@ -85,7 +85,11 @@ Generate exactly 10 questions. Make questions practical, India-specific where re
       body: JSON.stringify({ quiz_date: today, topic, questions }),
     });
     return res.status(200).json({ questions, cached: false });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    } catch (e) {
+    return res.status(500).json({ 
+      error: e.message, 
+      cause: e.cause?.message || String(e.cause), 
+      code: e.cause?.code 
+    });
   }
 }
