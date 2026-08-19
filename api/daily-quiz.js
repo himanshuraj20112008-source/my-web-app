@@ -1,13 +1,10 @@
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") return res.status(200).end();
-
   const { topic } = req.query;
   if (!topic) return res.status(400).json({ error: "topic required" });
-
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
   const today = new Date().toISOString().split("T")[0];
   if (!SUPABASE_URL || !SERVICE_KEY) {
     return res.status(500).json({ error: "Missing Supabase env vars", SUPABASE_URL: !!SUPABASE_URL, SERVICE_KEY: !!SERVICE_KEY });
@@ -27,13 +24,11 @@ export default async function handler(req, res) {
       }
     );
     const existing = await checkRes.json();
-
     if (existing && existing.length > 0) {
       return res.status(200).json({ questions: existing[0].questions, cached: true });
     }
-
-    // Generate new questions via Anthropic API
-const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    // Generate new questions via Groq API
+    const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -48,23 +43,24 @@ const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           },
           {
             role: "user",
-            content: `Generate 10 fresh, unique cybersecurity quiz questions about "${topic}" for Indian users. Reply ONLY with a JSON array in this exact format:
-[{"q":"question text","opts":["opt1","opt2","opt3","opt4"],"ans":0,"explain":"why this is correct, 1-2 sentences"}]
-Make questions practical, India-specific where relevant (UPI, Aadhaar, Indian banks), and varied in difficulty.`,
+            content: `Generate 10 fresh, unique cybersecurity quiz questions about "${topic}" for Indian users. Reply ONLY with a JSON object in this exact format (a "questions" key containing the array):
+{"questions":[{"q":"question text","opts":["opt1","opt2","opt3","opt4"],"ans":0,"explain":"why this is correct, 1-2 sentences"}]}
+Generate exactly 10 questions. Make questions practical, India-specific where relevant (UPI, Aadhaar, Indian banks), and varied in difficulty.`,
           },
         ],
-        max_tokens: 3000,
+        max_tokens: 6000,
         temperature: 0.7,
+        reasoning_effort: "medium",
+        response_format: { type: "json_object" },
       }),
     });
-
     const aiData = await aiRes.json();
-    const text = aiData.choices?.[0]?.message?.content || "[]";
+    const text = aiData.choices?.[0]?.message?.content || "{}";
     const clean = text.replace(/```json|```/g, "").trim();
-
     let questions;
     try {
-      questions = JSON.parse(clean);
+      const parsed = JSON.parse(clean);
+      questions = Array.isArray(parsed) ? parsed : parsed.questions;
       if (!Array.isArray(questions) || questions.length === 0) {
         throw new Error("Empty or invalid questions array from AI");
       }
@@ -73,9 +69,10 @@ Make questions practical, India-specific where relevant (UPI, Aadhaar, Indian ba
         questions: [],
         cached: false,
         error: "Quiz generation failed — AI response was incomplete. Please try again.",
+        debugRawText: text,
+        debugParseError: parseErr.message,
       });
     }
-
     // Save to Supabase
     await fetch(`${SUPABASE_URL}/rest/v1/daily_quiz`, {
       method: "POST",
@@ -87,7 +84,6 @@ Make questions practical, India-specific where relevant (UPI, Aadhaar, Indian ba
       },
       body: JSON.stringify({ quiz_date: today, topic, questions }),
     });
-
     return res.status(200).json({ questions, cached: false });
   } catch (e) {
     return res.status(500).json({ error: e.message });
