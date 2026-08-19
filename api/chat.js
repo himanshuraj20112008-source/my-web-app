@@ -24,8 +24,9 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "openai/gpt-oss-120b",
         messages: groqMessages,
-        max_tokens: 1500,
+                max_tokens: 2500,
         temperature: 0.7,
+        reasoning_effort: "low",
       }),
     });
 
