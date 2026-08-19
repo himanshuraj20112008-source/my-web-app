@@ -6,12 +6,10 @@ const redis = new Redis({
 });
 
 const TRUSTED_DOMAINS = [
-  // Official / Government
   "rbi.org.in",
   "npci.org.in",
   "cybercrime.gov.in",
   "pib.gov.in",
-  // Major News Channels
   "ndtv.com",
   "timesofindia.indiatimes.com",
   "indiatoday.in",
@@ -26,20 +24,17 @@ const TRUSTED_DOMAINS = [
   "economictimes.indiatimes.com",
   "moneycontrol.com",
   "financialexpress.com",
-  "cnbctv18.com",
 ];
 
+// Query list ghata di gayi hai (8 se 4) — credits kam waste hon isliye
 const SEARCH_QUERIES = [
   "UPI payment fraud scam alert India",
   "phishing OTP fraud scam India news",
   "digital arrest KYC scam fraud India",
   "job work from home scam fraud India",
-  "investment trading app scam fraud India",
-  "loan app fraud harassment India",
-  "SIM swap fraud scam India",
-  "fake customer care scam India",
 ];
 
+// ── Tavily search ──
 async function searchTavily(query, useDomainFilter) {
   const body = {
     api_key: process.env.TAVILY_API_KEY,
@@ -56,8 +51,66 @@ async function searchTavily(query, useDomainFilter) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+  if (!r.ok) {
+    const errText = await r.text();
+    throw new Error(`Tavily HTTP ${r.status}: ${errText.slice(0, 200)}`);
+  }
+
   const data = await r.json();
+  if (data.error) throw new Error(`Tavily error: ${data.error}`);
+
   return data.results || [];
+}
+
+// ── Serper.dev search (fallback) ──
+async function searchSerper(query, useDomainFilter) {
+  // Serper mein direct include_domains nahi hota, isliye site: operators use karte hain
+  const domainFilter = useDomainFilter
+    ? " (" + TRUSTED_DOMAINS.map((d) => `site:${d}`).join(" OR ") + ")"
+    : "";
+
+  const r = await fetch("https://google.serper.dev/search", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": process.env.SERPER_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ q: query + domainFilter, num: 8 }),
+  });
+
+  if (!r.ok) {
+    const errText = await r.text();
+    throw new Error(`Serper HTTP ${r.status}: ${errText.slice(0, 200)}`);
+  }
+
+  const data = await r.json();
+  const organic = data.organic || [];
+
+  // Tavily jaisa hi shape banate hain: url, title, content
+  return organic.map((item) => ({
+    url: item.link,
+    title: item.title,
+    content: item.snippet || "",
+  }));
+}
+
+// ── Fallback wrapper: pehle Tavily try karo, fail ho to Serper try karo ──
+async function searchWithFallback(query, useDomainFilter) {
+  try {
+    const results = await searchTavily(query, useDomainFilter);
+    return { results, provider: "tavily" };
+  } catch (tavilyErr) {
+    console.error(`Tavily failed for "${query}":`, tavilyErr.message);
+    try {
+      const results = await searchSerper(query, useDomainFilter);
+      console.warn(`Fell back to Serper for "${query}"`);
+      return { results, provider: "serper" };
+    } catch (serperErr) {
+      console.error(`Serper also failed for "${query}":`, serperErr.message);
+      return { results: [], provider: "none" };
+    }
+  }
 }
 
 export default async function handler(req, res) {
@@ -65,34 +118,46 @@ export default async function handler(req, res) {
     const cached = await redis.get("trending_scam");
     const now = Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;
+    const cooldownMs = 2 * 60 * 60 * 1000; // 2 ghante ka cooldown failure ke baad
 
-    // Pichli 3 baar jo scam titles dikhaye the, unki history nikalo
     const recentTitles = (await redis.get("recent_scam_titles")) || [];
-    // Agar last check 24 ghante se kam purana hai, to wahi purana data bhej do
+
     if (cached && cached.lastChecked && now - cached.lastChecked < oneDayMs) {
       return res.status(200).json(cached);
     }
 
-    // ── Step A: Multiple queries, trusted sources se, results combine karo ──
+    // Agar pichli baar recently fail hua tha, to abhi retry mat karo (credits bachao)
+    const lastFailure = await redis.get("trending_scam_last_failure");
+    if (lastFailure && now - lastFailure < cooldownMs) {
+      return res.status(200).json(cached || { error: "unavailable" });
+    }
+
     let allResults = [];
+    let anyFallbackUsed = false;
+
     for (const q of SEARCH_QUERIES) {
-      const results = await searchTavily(q, true);
+      const { results, provider } = await searchWithFallback(q, true);
+      if (provider === "serper") anyFallbackUsed = true;
       allResults.push(...results);
     }
 
-    // Agar trusted domains se kuch bhi nahi mila, to bina filter ke try karo
     if (allResults.length === 0) {
       for (const q of SEARCH_QUERIES) {
-        const results = await searchTavily(q, false);
+        const { results, provider } = await searchWithFallback(q, false);
+        if (provider === "serper") anyFallbackUsed = true;
         allResults.push(...results);
       }
     }
 
     if (allResults.length === 0) {
-      throw new Error("No search results from Tavily");
+      await redis.set("trending_scam_last_failure", now);
+      throw new Error("No search results from Tavily or Serper");
     }
 
-    // Duplicate URLs hatao
+    if (anyFallbackUsed) {
+      console.warn("This run used Serper fallback (Tavily unavailable)");
+    }
+
     const seen = new Set();
     allResults = allResults.filter((r) => {
       if (seen.has(r.url)) return false;
@@ -105,7 +170,6 @@ export default async function handler(req, res) {
       .map((r, i) => `[${i}] Source: ${new URL(r.url).hostname.replace("www.", "")}\nTitle: ${r.title}\nSnippet: ${(r.content || "").slice(0, 200)}`)
       .join("\n\n");
 
-    // ── Step B: Groq — cross-verify karke sabse trending scam dhoondo ──
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -138,20 +202,18 @@ ${articleList}`,
         ],
       }),
     });
-   const groqData = await groqRes.json();
-    const groqText = groqData.choices?.[0]?.message?.content || "{}";
 
+    const groqData = await groqRes.json();
+    const groqText = groqData.choices?.[0]?.message?.content || "{}";
     const clean = groqText.replace(/```json|```/g, "").trim();
     const summary = JSON.parse(clean);
 
     if (summary.noMatch || !summary.matchedIndices || summary.matchedIndices.length === 0) {
+      await redis.set("trending_scam_last_failure", now);
       throw new Error("No genuine scam article found in results");
     }
 
-    // Matched articles se unique sources nikalo
-    const matchedArticles = summary.matchedIndices
-      .map((i) => allResults[i])
-      .filter(Boolean);
+    const matchedArticles = summary.matchedIndices.map((i) => allResults[i]).filter(Boolean);
 
     const seenDomains = new Set();
     const sources = [];
@@ -167,10 +229,9 @@ ${articleList}`,
       title: summary.title,
       description: summary.description,
       action: summary.action,
-      sources: sources.slice(0, 5), // max 5 source links dikhao
+      sources: sources.slice(0, 5),
     };
 
-    // Purane title se compare karke check karo genuinely naya scam hai ya same
     const isNewScam =
       !cached || !cached.title || cached.title.toLowerCase().trim() !== parsed.title.toLowerCase().trim();
 
@@ -184,10 +245,10 @@ ${articleList}`,
       lastUpdated: isNewScam ? now : cached.lastUpdated || now,
     };
 
-   // Recent titles history update karo (last 3 rakho, taaki agli baar avoid ho sakein)
-    const updatedRecentTitles = [parsed.title, ...recentTitles.filter(t => t.toLowerCase() !== parsed.title.toLowerCase())].slice(0, 3);
+    const updatedRecentTitles = [parsed.title, ...recentTitles.filter((t) => t.toLowerCase() !== parsed.title.toLowerCase())].slice(0, 3);
     await redis.set("recent_scam_titles", updatedRecentTitles);
 
+    await redis.del("trending_scam_last_failure"); // success hua to cooldown clear kar do
     await redis.set("trending_scam", updated);
     return res.status(200).json(updated);
   } catch (err) {
