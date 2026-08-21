@@ -2376,11 +2376,6 @@ function reportLoginIssue(context) {
   window.open(url, "_blank");
 }
 
-function reportLoginIssue(context) {
-  const msg = `🔔 SentinelX Support Alert\n\nA user faced a SERVER-side issue while: ${context}\nTime: ${new Date().toLocaleString("en-IN")}\n\nPlease check if the backend service needs a resume/restart.`;
-  const url = `https://wa.me/919934916031?text=${encodeURIComponent(msg)}`;
-  window.open(url, "_blank");
-}
 
 function AuthPage({ onLogin }) {
   const [mode, setMode] = useState("login"); // login | signup
