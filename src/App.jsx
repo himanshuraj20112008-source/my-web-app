@@ -2831,11 +2831,13 @@ if (!user) {
           ))}
         </div>
                 <button
-          onClick={()=>setPage("Assistant")}
+          onMouseDown={fabPointerDown}
+          onTouchStart={fabPointerDown}
+          onClick={()=>{ if (!fabWasMoved()) setPage("Assistant"); }}
           style={{
             position:"fixed",
-            right:16,
-            bottom:"calc(76px + env(safe-area-inset-bottom))",
+            left: fabPos.x,
+            top: fabPos.y,
             width:56,
             height:56,
             borderRadius:"50%",
@@ -2845,10 +2847,11 @@ if (!user) {
             alignItems:"center",
             justifyContent:"center",
             fontSize:26,
-            cursor:"pointer",
+            cursor:"grab",
             boxShadow:"0 4px 20px rgba(0,212,255,0.45)",
             animation:"glow 3s ease infinite",
             zIndex:150,
+            touchAction:"none",
           }}
           title="Ask SentinelX AI"
         >
