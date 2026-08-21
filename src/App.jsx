@@ -2376,13 +2376,18 @@ function reportLoginIssue(context) {
   window.open(url, "_blank");
 }
 
+function reportLoginIssue(context) {
+  const msg = `🔔 SentinelX Support Alert\n\nA user faced a SERVER-side issue while: ${context}\nTime: ${new Date().toLocaleString("en-IN")}\n\nPlease check if the backend service needs a resume/restart.`;
+  const url = `https://wa.me/919934916031?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+}
+
 function AuthPage({ onLogin }) {
   const [mode, setMode] = useState("login"); // login | signup
-  const [step, setStep] = useState("form"); // form | otp
+  const [step, setStep] = useState("form"); // form | recoveryDisplay | forgotPassword | forgotSuccess
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showReport, setShowReport] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
   const [showLegal, setShowLegal] = useState(false);
 
   // signup fields
@@ -2390,30 +2395,40 @@ function AuthPage({ onLogin }) {
   const [designation, setDesignation] = useState("");
   const [designationOther, setDesignationOther] = useState("");
   const [mobile, setMobile] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   // shared
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown(c => Math.max(0, c - 1)), 1000);
-    return () => clearInterval(t);
-  }, [cooldown]);
+  // recovery code display (after signup)
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [pendingUser, setPendingUser] = useState(null);
+  const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [hasCopied, setHasCopied] = useState(false);
+  const [saveConfirmed, setSaveConfirmed] = useState(false);
 
-  function fmtCooldown(s) {
-    const m = Math.floor(s / 60), sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  }
+  // forgot password fields
+  const [fpEmail, setFpEmail] = useState("");
+  const [fpCode, setFpCode] = useState("");
+  const [fpNewPassword, setFpNewPassword] = useState("");
+  const [fpConfirmPassword, setFpConfirmPassword] = useState("");
+  const [showFpHelp, setShowFpHelp] = useState(false);
 
-  // Signup — no OTP, account created and logged in directly
+  // Signup — creates account, then shows recovery code screen
   async function handleSignup() {
     setError("");
-    if (!name.trim() || !designation || !email.trim() || !mobile.trim()) {
+    if (!name.trim() || !designation || !email.trim() || !mobile.trim() || !password || !confirmPassword) {
       setError("Please fill all fields."); return;
     }
     if (designation === "other" && !designationOther.trim()) {
       setError("Please specify your designation."); return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters."); return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match."); return;
     }
     setLoading(true);
     setShowReport(false);
@@ -2421,7 +2436,7 @@ function AuthPage({ onLogin }) {
       const res = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, designation, designationOther, email, mobile }),
+        body: JSON.stringify({ name, designation, designationOther, email, mobile, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -2430,38 +2445,9 @@ function AuthPage({ onLogin }) {
         setLoading(false);
         return;
       }
-      onLogin(data.user);
-    } catch {
-      setError("Network error. Please try again.");
-      setShowReport(true);
-      setLoading(false);
-    }
-  }
-
-  // Login — sends OTP
-  async function sendOtp() {
-    setError("");
-    setShowReport(false);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Could not send OTP");
-        setShowReport(res.status >= 500);
-        if (res.status === 429) {
-          setStep("otp");
-          setCooldown(60);
-        }
-        setLoading(false);
-        return;
-      }
-      setStep("otp");
-      setCooldown(60);
+      setPendingUser(data.user);
+      setRecoveryCode(data.recoveryCode);
+      setStep("recoveryDisplay");
     } catch {
       setError("Network error. Please try again.");
       setShowReport(true);
@@ -2469,31 +2455,87 @@ function AuthPage({ onLogin }) {
     setLoading(false);
   }
 
-  async function handleLoginStart() {
+  // Login — email + password
+  async function handleLogin() {
     setError("");
-    if (!email.trim()) { setError("Please enter your email."); return; }
-    await sendOtp();
-  }
-
-  async function handleVerifyOtp() {
-    setError("");
-    setShowReport(false);
-    if (!otp.trim()) { setError("Please enter the OTP."); return; }
+    if (!email.trim() || !password) {
+      setError("Please enter email and password."); return;
+    }
     setLoading(true);
+    setShowReport(false);
     try {
-      const res = await fetch("/api/verify-otp", {
+      const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Verification failed");
+        setError(data.error || "Login failed");
         setShowReport(res.status >= 500);
         setLoading(false);
         return;
       }
       onLogin(data.user);
+    } catch {
+      setError("Network error. Please try again.");
+      setShowReport(true);
+    }
+    setLoading(false);
+  }
+
+  function copyRecoveryCode() {
+    navigator.clipboard.writeText(recoveryCode).then(() => {
+      setHasCopied(true);
+    });
+  }
+
+  function downloadRecoveryCode() {
+    const content = `SentinelX Recovery Code\n\nAccount: ${email}\nRecovery Code: ${recoveryCode}\n\nKeep this code safe. You will need it to reset your password if you forget it.\nThis code cannot be recovered if lost.`;
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sentinelx-recovery-code.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setHasDownloaded(true);
+  }
+
+  function finishSignup() {
+    onLogin(pendingUser);
+  }
+
+  // Forgot password — verify code + set new password
+  async function handleForgotPassword() {
+    setError("");
+    if (!fpEmail.trim() || !fpCode.trim() || !fpNewPassword || !fpConfirmPassword) {
+      setError("Please fill all fields."); return;
+    }
+    if (fpNewPassword.length < 6) {
+      setError("Password must be at least 6 characters."); return;
+    }
+    if (fpNewPassword !== fpConfirmPassword) {
+      setError("Passwords do not match."); return;
+    }
+    setLoading(true);
+    setShowReport(false);
+    try {
+      const res = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: fpEmail, recoveryCode: fpCode, newPassword: fpNewPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Reset failed");
+        setShowReport(res.status >= 500);
+        setLoading(false);
+        return;
+      }
+      setStep("forgotSuccess");
     } catch {
       setError("Network error. Please try again.");
       setShowReport(true);
@@ -2554,6 +2596,24 @@ function AuthPage({ onLogin }) {
               <input className="ifield" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" type="email" style={{padding:"10px 13px",fontSize:13}}/>
             </div>
 
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Password</div>
+              <input className="ifield" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters" type="password" style={{padding:"10px 13px",fontSize:13}}/>
+            </div>
+
+            {mode === "signup" && (
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Confirm Password</div>
+                <input className="ifield" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Re-enter password" type="password" style={{padding:"10px 13px",fontSize:13}}/>
+              </div>
+            )}
+
+            {mode === "login" && (
+              <div style={{textAlign:"right",marginBottom:14,marginTop:-6}}>
+                <span onClick={()=>{setStep("forgotPassword");setError("")}} style={{fontSize:11,color:C.cyan,cursor:"pointer",textDecoration:"underline"}}>Forgot Password?</span>
+              </div>
+            )}
+
             {error && (
               <div style={{marginBottom:12}}>
                 <div style={{fontSize:12,color:C.danger,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>
@@ -2565,8 +2625,8 @@ function AuthPage({ onLogin }) {
               </div>
             )}
 
-            <button className="btn-prime" disabled={loading} onClick={mode==="signup"?handleSignup:handleLoginStart} style={{width:"100%",padding:"12px",fontSize:13}}>
-              {loading ? "⏳ Please wait…" : mode==="signup" ? "Create Account" : "Send OTP"}
+            <button className="btn-prime" disabled={loading} onClick={mode==="signup"?handleSignup:handleLogin} style={{width:"100%",padding:"12px",fontSize:13}}>
+              {loading ? "⏳ Please wait…" : mode==="signup" ? "Create Account" : "Login"}
             </button>
 
             <p style={{fontSize:11,color:C.muted,textAlign:"center",marginTop:14,lineHeight:1.6}}>
@@ -2578,41 +2638,121 @@ function AuthPage({ onLogin }) {
           </>
         )}
 
-        {showLegal && <LegalModal onClose={()=>setShowLegal(false)} />}
+        {step === "recoveryDisplay" && (
+          <>
+            <div style={{textAlign:"center",marginBottom:16}}>
+              <div style={{fontSize:28,marginBottom:8}}>🔑</div>
+              <div style={{fontSize:15,fontWeight:700,color:C.text}}>Save Your Recovery Code</div>
+              <div style={{fontSize:12,color:C.muted,marginTop:6,lineHeight:1.6}}>
+                You'll need this code to reset your password if you ever forget it. It cannot be recovered if lost.
+              </div>
+            </div>
 
-        {step === "otp" && (
+            <div className="glass-sm mono" style={{padding:"16px",textAlign:"center",fontSize:16,fontWeight:700,color:C.cyan,letterSpacing:1,marginBottom:14,wordBreak:"break-all"}}>
+              {recoveryCode}
+            </div>
+
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <button className="btn-ghost" onClick={copyRecoveryCode} style={{flex:1,padding:"10px",fontSize:12}}>
+                {hasCopied ? "✅ Copied" : "📋 Copy Code"}
+              </button>
+              <button className="btn-ghost" onClick={downloadRecoveryCode} style={{flex:1,padding:"10px",fontSize:12}}>
+                {hasDownloaded ? "✅ Downloaded" : "⬇️ Download"}
+              </button>
+            </div>
+
+            <label style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:16,cursor:hasDownloaded?"pointer":"not-allowed",opacity:hasDownloaded?1:0.45}}>
+              <input
+                type="checkbox"
+                checked={saveConfirmed}
+                disabled={!hasDownloaded}
+                onChange={e=>setSaveConfirmed(e.target.checked)}
+                style={{marginTop:2}}
+              />
+              <span style={{fontSize:12,color:C.text,lineHeight:1.5}}>
+                I have saved this recovery code somewhere safe.
+                {!hasDownloaded && <span style={{color:C.muted}}> (Download the code first to enable this)</span>}
+              </span>
+            </label>
+
+            <button className="btn-prime" disabled={!saveConfirmed} onClick={finishSignup} style={{width:"100%",padding:"12px",fontSize:13}}>
+              Continue to SentinelX →
+            </button>
+          </>
+        )}
+
+        {step === "forgotPassword" && (
           <>
             <div style={{textAlign:"center",marginBottom:18}}>
-              <div style={{fontSize:13,color:C.muted}}>We've sent a 6-digit code to</div>
-              <div style={{fontSize:14,fontWeight:600,color:C.cyan,marginTop:3}}>{email}</div>
+              <div style={{fontSize:15,fontWeight:700,color:C.text}}>Reset Password</div>
+              <div style={{fontSize:12,color:C.muted,marginTop:6,lineHeight:1.6}}>
+                Enter the unique recovery code you saved during signup.
+              </div>
             </div>
-            <input className="ifield mono" value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="000000" style={{padding:"12px 13px",fontSize:20,textAlign:"center",letterSpacing:8,marginBottom:14}}/>
+
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Email Address</div>
+              <input className="ifield" value={fpEmail} onChange={e=>setFpEmail(e.target.value)} placeholder="you@example.com" type="email" style={{padding:"10px 13px",fontSize:13}}/>
+            </div>
+
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Recovery Code</div>
+              <input className="ifield mono" value={fpCode} onChange={e=>setFpCode(e.target.value.toUpperCase())} placeholder="SNTX-XXXX-XXXX-XXXX" style={{padding:"10px 13px",fontSize:13}}/>
+            </div>
+
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:6}}>New Password</div>
+              <input className="ifield" value={fpNewPassword} onChange={e=>setFpNewPassword(e.target.value)} placeholder="At least 6 characters" type="password" style={{padding:"10px 13px",fontSize:13}}/>
+            </div>
+
+            <div style={{marginBottom:6}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Confirm New Password</div>
+              <input className="ifield" value={fpConfirmPassword} onChange={e=>setFpConfirmPassword(e.target.value)} placeholder="Re-enter new password" type="password" style={{padding:"10px 13px",fontSize:13}}/>
+            </div>
+
+            <div style={{textAlign:"right",marginBottom:14}}>
+              <span onClick={()=>setShowFpHelp(!showFpHelp)} style={{fontSize:11,color:C.cyan,cursor:"pointer",textDecoration:"underline"}}>Can't find your code?</span>
+            </div>
+
+            {showFpHelp && (
+              <div style={{fontSize:11,color:C.text,background:"rgba(0,212,255,0.06)",border:"1px solid rgba(0,212,255,0.2)",borderRadius:8,padding:"10px 12px",marginBottom:14,lineHeight:1.6}}>
+                💡 Your recovery code was automatically downloaded as a text file when you signed up. Check your device's <strong>Downloads folder</strong> and look for a file named <span className="mono" style={{color:C.cyan}}>sentinelx-recovery-code.txt</span>
+              </div>
+            )}
 
             {error && (
               <div style={{marginBottom:12}}>
                 <div style={{fontSize:12,color:C.danger,padding:"9px 12px",background:"rgba(255,77,79,0.08)",borderRadius:8,border:"1px solid rgba(255,77,79,0.25)"}}>{error}</div>
                 {showReport && (
-                  <button onClick={()=>reportLoginIssue("OTP Verification")} style={{marginTop:6,fontSize:11,color:C.cyan,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"Inter,sans-serif"}}>
+                  <button onClick={()=>reportLoginIssue("Forgot Password")} style={{marginTop:6,fontSize:11,color:C.cyan,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"Inter,sans-serif"}}>
                     ⚠️ App not working? Report this issue
                   </button>
                 )}
               </div>
             )}
 
-            <button className="btn-prime" disabled={loading||otp.length<6} onClick={handleVerifyOtp} style={{width:"100%",padding:"12px",fontSize:13,marginBottom:14}}>
-              {loading ? "⏳ Verifying…" : "Verify & Continue"}
+            <button className="btn-prime" disabled={loading} onClick={handleForgotPassword} style={{width:"100%",padding:"12px",fontSize:13,marginBottom:12}}>
+              {loading ? "⏳ Resetting…" : "Reset Password"}
             </button>
 
-            <div style={{textAlign:"center",fontSize:12,color:C.muted,padding:"10px",background:"rgba(255,255,255,0.03)",borderRadius:8}}>
-              {cooldown > 0 ? (
-                <>⏱️ Resend OTP available in <span className="mono" style={{color:C.cyan,fontWeight:700}}>{fmtCooldown(cooldown)}</span></>
-              ) : (
-                <button onClick={sendOtp} disabled={loading} style={{background:"none",border:"none",color:C.cyan,cursor:"pointer",fontSize:12,fontFamily:"Inter,sans-serif",textDecoration:"underline",fontWeight:600}}>🔄 Resend OTP</button>
-              )}
-            </div>
-            <button onClick={()=>{setStep("form");setOtp("");setError("");setCooldown(0)}} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:11,fontFamily:"Inter,sans-serif"}}>← Change email</button>
+            <button onClick={()=>{setStep("form");setError("");setFpEmail("");setFpCode("");setFpNewPassword("");setFpConfirmPassword("")}} style={{display:"block",margin:"0 auto",background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:11,fontFamily:"Inter,sans-serif"}}>← Back to Login</button>
           </>
         )}
+
+        {step === "forgotSuccess" && (
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:32,marginBottom:12}}>✅</div>
+            <div style={{fontSize:15,fontWeight:700,color:C.success,marginBottom:8}}>Password Reset Successful</div>
+            <div style={{fontSize:12,color:C.muted,marginBottom:20,lineHeight:1.6}}>
+              You can now login with your new password.
+            </div>
+            <button className="btn-prime" onClick={()=>{setStep("form");setMode("login");setEmail(fpEmail);setPassword("");setFpEmail("");setFpCode("");setFpNewPassword("");setFpConfirmPassword("")}} style={{width:"100%",padding:"12px",fontSize:13}}>
+              Go to Login →
+            </button>
+          </div>
+        )}
+
+        {showLegal && <LegalModal onClose={()=>setShowLegal(false)} />}
       </div>
     </div>
   );
