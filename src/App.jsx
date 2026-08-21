@@ -2224,8 +2224,6 @@ function LearnPage() {
     </div>
   );
 }
-// ─── INSTALL GUIDE ────────────────────────────────────────────────────────────
-
 function LegalModal({ onClose }) {
   const [tab, setTab] = useState("privacy");
   return (
