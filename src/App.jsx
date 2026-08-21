@@ -2757,6 +2757,10 @@ const [showLegal, setShowLegal] = useState(false);
 
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
 const { user, login, logout } = useAuth();
+const { pos: fabPos, onPointerDown: fabPointerDown, wasMoved: fabWasMoved } = useDraggable({
+  x: (typeof window !== "undefined" ? window.innerWidth : 400) - 72,
+  y: (typeof window !== "undefined" ? window.innerHeight : 800) - 140,
+});
 const { data: scamAlertData, loading: scamAlertLoading } = useScamAlert();
 const [showScamAlert, setShowScamAlert] = useState(false);
 
