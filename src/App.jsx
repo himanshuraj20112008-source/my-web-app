@@ -2225,15 +2225,6 @@ function LearnPage() {
   );
 }
 // ─── INSTALL GUIDE ────────────────────────────────────────────────────────────
-function detectDevice() {
-  const ua = navigator.userAgent || "";
-  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-  const isAndroid = /Android/.test(ua);
-  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-  if (isIOS) return "ios";
-  if (isAndroid) return "android";
-  return "desktop";
-}
 
 function LegalModal({ onClose }) {
   const [tab, setTab] = useState("privacy");
