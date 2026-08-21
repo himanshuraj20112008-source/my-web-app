@@ -2876,7 +2876,7 @@ if (!user) {
           }}
                     title="Ask SentinelX AI"
         >
-          <img src="/robo.jpeg" alt="AI Assistant" style={{width:"78%",height:"78%",objectFit:"contain"}}/>
+          <img src="/robo.jpeg" alt="AI Assistant" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}}/>
         </button>
        <div style={{height:"calc(64px + env(safe-area-inset-bottom))"}}/>
       </div>
