@@ -1275,6 +1275,45 @@ const RISK_ENGINE = {
 };
 
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
+function useDraggable(initialPos) {
+  const [pos, setPos] = useState(initialPos);
+  const dragging = useRef(false);
+  const offset = useRef({ x: 0, y: 0 });
+  const moved = useRef(false);
+
+  function onPointerDown(e) {
+    dragging.current = true;
+    moved.current = false;
+    const point = e.touches ? e.touches[0] : e;
+    const rect = e.currentTarget.getBoundingClientRect();
+    offset.current = { x: point.clientX - rect.left, y: point.clientY - rect.top };
+    document.addEventListener("mousemove", onPointerMove);
+    document.addEventListener("mouseup", onPointerUp);
+    document.addEventListener("touchmove", onPointerMove, { passive: false });
+    document.addEventListener("touchend", onPointerUp);
+  }
+
+  function onPointerMove(e) {
+    if (!dragging.current) return;
+    if (e.touches) e.preventDefault();
+    moved.current = true;
+    const point = e.touches ? e.touches[0] : e;
+    const btnSize = 56;
+    const x = Math.min(Math.max(point.clientX - offset.current.x, 8), window.innerWidth - btnSize - 8);
+    const y = Math.min(Math.max(point.clientY - offset.current.y, 8), window.innerHeight - btnSize - 8);
+    setPos({ x, y });
+  }
+
+  function onPointerUp() {
+    dragging.current = false;
+    document.removeEventListener("mousemove", onPointerMove);
+    document.removeEventListener("mouseup", onPointerUp);
+    document.removeEventListener("touchmove", onPointerMove);
+    document.removeEventListener("touchend", onPointerUp);
+  }
+
+  return { pos, onPointerDown, wasMoved: () => moved.current };
+}
 function Shield({ size=40 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
