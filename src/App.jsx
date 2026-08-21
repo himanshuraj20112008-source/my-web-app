@@ -2791,21 +2791,9 @@ useEffect(() => {
   };
 }, []);
 const [defaultTab,setDefaultTab]=useState("upi");
-const [showInstallGuide, setShowInstallGuide] = useState(false);
+
 const [showLegal, setShowLegal] = useState(false);
 
-useEffect(() => {
-const seen = safeGetItem("sentinelx_install_guide_seen", null);
-  if (!seen) {
-    const timer = setTimeout(() => setShowInstallGuide(true), 1500);
-    return () => clearTimeout(timer);
-  }
-}, []);
-
-function closeInstallGuide() {
-  safeSetItem("sentinelx_install_guide_seen", "true");
-  setShowInstallGuide(false);
-}
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
 const { user, login, logout } = useAuth();
 const { data: scamAlertData, loading: scamAlertLoading } = useScamAlert();
@@ -2845,9 +2833,7 @@ if (!user) {
               <span style={{position:"absolute",top:2,right:2,width:7,height:7,borderRadius:"50%",background:C.danger,border:"1.5px solid #080E1C"}}/>
             )}
           </button>
-        <button onClick={()=>setShowInstallGuide(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(0,212,255,0.08)",border:"1px solid rgba(0,212,255,0.25)",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
-            📲
-          </button>
+          
           <button onClick={()=>setShowLegal(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(0,212,255,0.08)",border:"1px solid rgba(0,212,255,0.25)",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
             📄
           </button>
