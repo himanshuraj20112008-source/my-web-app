@@ -2792,19 +2792,34 @@ if (!user) {
             </span>
           </div>
           
-        <button onClick={()=>setShowScamAlert(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(255,193,7,0.08)",border:"1px solid rgba(255,193,7,0.25)",color:C.warning,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,position:"relative"}}>
-            🚨
+                <div style={{position:"relative",marginLeft:8}}>
+          <button onClick={()=>setShowMenu(m=>!m)} style={{padding:"6px 12px",fontSize:16,borderRadius:8,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",color:C.text,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,position:"relative",lineHeight:1}}>
+            ⋯
             {!scamAlertLoading && scamAlertData && !scamAlertData.error && scamAlertData.title && (
               <span style={{position:"absolute",top:2,right:2,width:7,height:7,borderRadius:"50%",background:C.danger,border:"1.5px solid #080E1C"}}/>
             )}
           </button>
-          
-          <button onClick={()=>setShowLegal(true)} style={{marginLeft:8,padding:"6px 10px",fontSize:11,borderRadius:8,background:"rgba(0,212,255,0.08)",border:"1px solid rgba(0,212,255,0.25)",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
-            📄
-          </button>
-          <button onClick={()=>{ if(window.confirm("Logout from SentinelX?")) logout(); }} style={{marginLeft:8,padding:"6px 12px",fontSize:11,borderRadius:8,background:"rgba(255,77,79,0.08)",border:"1px solid rgba(255,77,79,0.25)",color:C.danger,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
-            🚪 Logout
-          </button>
+
+          {showMenu && (
+            <>
+              <div onClick={()=>setShowMenu(false)} style={{position:"fixed",inset:0,zIndex:199}}/>
+              <div className="glass fu" style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:190,padding:8,zIndex:200,display:"flex",flexDirection:"column",gap:4}}>
+                <button onClick={()=>{setShowScamAlert(true);setShowMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"transparent",border:"none",color:C.warning,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,textAlign:"left"}}>
+                  🚨 Scam Alert
+                  {!scamAlertLoading && scamAlertData && !scamAlertData.error && scamAlertData.title && (
+                    <span style={{marginLeft:"auto",width:7,height:7,borderRadius:"50%",background:C.danger}}/>
+                  )}
+                </button>
+                <button onClick={()=>{setShowLegal(true);setShowMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"transparent",border:"none",color:C.cyan,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,textAlign:"left"}}>
+                  📄 Privacy & Terms
+                </button>
+                <button onClick={()=>{ setShowMenu(false); if(window.confirm("Logout from SentinelX?")) logout(); }} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"transparent",border:"none",color:C.danger,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,textAlign:"left"}}>
+                  🚪 Logout
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         </header>
         {showLegal && <LegalModal onClose={()=>setShowLegal(false)}/>}
         {showScamAlert && <ScamAlertModal data={scamAlertData} loading={scamAlertLoading} onClose={()=>setShowScamAlert(false)}/>}
