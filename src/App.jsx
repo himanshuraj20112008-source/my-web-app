@@ -1668,7 +1668,13 @@ function HomePage({ setPage, setDefaultTab }) {
         </div>
         <div style={{fontSize:10,letterSpacing:5,color:C.cyan,marginBottom:14,textTransform:"uppercase",fontWeight:500}}>AI-Powered Threat Intelligence</div>
         <h1 style={{fontSize:"clamp(28px,5vw,50px)",fontWeight:700,lineHeight:1.1,marginBottom:14}}>
-                  <span style={{background:`linear-gradient(90deg,#FFFFFF,${C.cyan},${C.blue},${C.violet})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Think Before You Click.</span>
+                            <span style={{
+            background:`linear-gradient(90deg, #FFFFFF 0%, #FFFFFF 8%, #00E676 8%, #00E676 38%, ${C.blue} 38%, ${C.blue} 68%, ${C.violet} 68%, ${C.violet} 100%)`,
+            WebkitBackgroundClip:"text",
+            backgroundClip:"text",
+            WebkitTextFillColor:"transparent",
+            color:"transparent",
+          }}>Think Before You Click.</span>
         </h1>
        
         <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
