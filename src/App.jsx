@@ -1670,7 +1670,7 @@ function HomePage({ setPage, setDefaultTab }) {
         <h1 style={{fontSize:"clamp(28px,5vw,50px)",fontWeight:700,lineHeight:1.1,marginBottom:14}}>
                   <span style={{background:`linear-gradient(90deg,#FFFFFF,${C.cyan},${C.blue},${C.violet})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Think Before You Click.</span>
         </h1>
-        <p style={{color:C.muted,fontSize:15,maxWidth:480,margin:"0 auto 28px",lineHeight:1.75}}>Smart hybrid risk analyzer — multi-heuristic scoring with entropy analysis, blacklists, community intel & AI reasoning.</p>
+       
         <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
           <button className="btn-prime" style={{padding:"13px 30px",fontSize:14}} onClick={()=>setPage("Scanner")}>🔍 Analyze Now</button>
         </div>
