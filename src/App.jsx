@@ -2751,6 +2751,7 @@ useEffect(() => {
   };
 }, []);
 const [defaultTab,setDefaultTab]=useState("upi");
+const [showMenu, setShowMenu] = useState(false);
 
 const [showLegal, setShowLegal] = useState(false);
 
