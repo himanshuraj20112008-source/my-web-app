@@ -2841,7 +2841,6 @@ if (!user) {
             🚪 Logout
           </button>
         </header>
-       {showInstallGuide && <InstallGuideModal onClose={closeInstallGuide}/>}
         {showLegal && <LegalModal onClose={()=>setShowLegal(false)}/>}
         {showScamAlert && <ScamAlertModal data={scamAlertData} loading={scamAlertLoading} onClose={()=>setShowScamAlert(false)}/>}
 {!isOnline && (
