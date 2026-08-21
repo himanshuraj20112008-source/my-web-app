@@ -2874,9 +2874,9 @@ if (!user) {
             zIndex:150,
             touchAction:"none",
           }}
-          title="Ask SentinelX AI"
+                    title="Ask SentinelX AI"
         >
-          🤖
+          <img src="/robo.jpeg" alt="AI Assistant" style={{width:"78%",height:"78%",objectFit:"contain"}}/>
         </button>
        <div style={{height:"calc(64px + env(safe-area-inset-bottom))"}}/>
       </div>
