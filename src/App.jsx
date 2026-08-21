@@ -2787,6 +2787,30 @@ if (!user) {
             </button>
           ))}
         </div>
+                <button
+          onClick={()=>setPage("Assistant")}
+          style={{
+            position:"fixed",
+            right:16,
+            bottom:"calc(76px + env(safe-area-inset-bottom))",
+            width:56,
+            height:56,
+            borderRadius:"50%",
+            background:`linear-gradient(135deg,${C.cyan},${C.blue})`,
+            border:"none",
+            display:"flex",
+            alignItems:"center",
+            justifyContent:"center",
+            fontSize:26,
+            cursor:"pointer",
+            boxShadow:"0 4px 20px rgba(0,212,255,0.45)",
+            animation:"glow 3s ease infinite",
+            zIndex:150,
+          }}
+          title="Ask SentinelX AI"
+        >
+          🤖
+        </button>
        <div style={{height:"calc(64px + env(safe-area-inset-bottom))"}}/>
       </div>
     </>
