@@ -2318,7 +2318,33 @@ function LegalModal({ onClose }) {
     </div>
   );
 }
-
+function ProfileModal({ user, onClose }) {
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div className="glass fu" style={{maxWidth:420,width:"100%",padding:26}} onClick={e=>e.stopPropagation()}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:32,marginBottom:8}}>👤</div>
+          <h2 style={{fontSize:17,fontWeight:700}}>My Profile</h2>
+          <p style={{fontSize:11,color:C.muted,marginTop:4}}>Details you provided during signup</p>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {[
+            ["Full Name", user?.name || "—"],
+            ["Designation", user?.designation === "other" ? (user?.designation_other || "Other") : (user?.designation || "—")],
+            ["Email Address", user?.email || "—"],
+            ["Mobile Number", user?.mobile || "—"],
+          ].map(([label, value]) => (
+            <div key={label} className="glass-sm" style={{padding:"12px 14px"}}>
+              <div style={{fontSize:10,color:C.muted,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>{label}</div>
+              <div style={{fontSize:14,fontWeight:600,color:C.text}}>{value}</div>
+            </div>
+          ))}
+        </div>
+        <button className="btn-prime" onClick={onClose} style={{width:"100%",padding:"12px",fontSize:13,marginTop:20}}>Close</button>
+      </div>
+    </div>
+  );
+}
 // ─── AUTH SYSTEM ──────────────────────────────────────────────────────────────
 function useAuth() {
   const [user, setUser] = useState(() => {
