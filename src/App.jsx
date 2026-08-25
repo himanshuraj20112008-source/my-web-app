@@ -2786,7 +2786,7 @@ const [defaultTab,setDefaultTab]=useState("upi");
 const [showMenu, setShowMenu] = useState(false);
 
 const [showLegal, setShowLegal] = useState(false);
-
+const [showProfile, setShowProfile] = useState(false);
 const { history, addScan, deleteScan, clearHistory } = useScanHistory();
 const { user, login, logout } = useAuth();
 const { pos: fabPos, onPointerDown: fabPointerDown, wasMoved: fabWasMoved } = useDraggable({
