@@ -2570,10 +2570,7 @@ function AuthPage({ onLogin }) {
                 {designation === "other" && (
                   <input className="ifield" value={designationOther} onChange={e=>setDesignationOther(e.target.value)} placeholder="Please specify" style={{padding:"10px 13px",fontSize:13}}/>
                 )}
-                <div>
-                  <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Mobile Number</div>
-                  <input className="ifield" value={mobile} onChange={e=>setMobile(e.target.value)} placeholder="+91 98765 43210" style={{padding:"10px 13px",fontSize:13}}/>
-                </div>
+
               </div>
             )}
 
