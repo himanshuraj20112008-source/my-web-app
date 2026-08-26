@@ -2831,7 +2831,7 @@ if (!user) {
           {showMenu && (
             <>
               <div onClick={()=>setShowMenu(false)} style={{position:"fixed",inset:0,zIndex:199}}/>
-              <div className="glass fu" style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:190,padding:8,zIndex:200,display:"flex",flexDirection:"column",gap:4}}>
+              <div className="fu" style={{position:"absolute",top:"calc(100% + 8px)",right:0,minWidth:190,padding:8,zIndex:200,display:"flex",flexDirection:"column",gap:4,background:"#0D1526",border:`1px solid ${C.border}`,borderRadius:16,boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
                 <button onClick={()=>{setShowScamAlert(true);setShowMenu(false);}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"transparent",border:"none",color:C.warning,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,textAlign:"left"}}>
                   🚨 Scam Alert
                   {!scamAlertLoading && scamAlertData && !scamAlertData.error && scamAlertData.title && (
