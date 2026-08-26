@@ -2381,7 +2381,6 @@ function AuthPage({ onLogin }) {
   const [name, setName] = useState("");
   const [designation, setDesignation] = useState("");
   const [designationOther, setDesignationOther] = useState("");
-  const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
