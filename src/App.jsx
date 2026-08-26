@@ -2404,7 +2404,7 @@ function AuthPage({ onLogin }) {
   // Signup — creates account, then shows recovery code screen
   async function handleSignup() {
     setError("");
-    if (!name.trim() || !designation || !email.trim() || !mobile.trim() || !password || !confirmPassword) {
+    if (!name.trim() || !designation || !email.trim() || !password || !confirmPassword) {
       setError("Please fill all fields."); return;
     }
     if (designation === "other" && !designationOther.trim()) {
