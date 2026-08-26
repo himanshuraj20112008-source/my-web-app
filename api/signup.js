@@ -52,7 +52,6 @@ export default async function handler(req, res) {
         designation,
         designation_other: designation === "other" ? (designationOther || "").trim() : null,
         email: emailNorm,
-        mobile: mobile.trim(),
         password_hash: passwordHash,
         recovery_code_hash: recoveryCodeHash,
       }),
