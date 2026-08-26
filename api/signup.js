@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { name, designation, designationOther, email, mobile, password } = req.body;
+  const { name, designation, designationOther, email, password } = req.body;
   if (!name || !designation || !email || !mobile || !password) {
     return res.status(400).json({ error: "All fields are required" });
   }
