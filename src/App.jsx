@@ -189,7 +189,7 @@ const DB = {
   emailBlacklist: EMAIL_BLACKLIST,
   emailWhitelist: EMAIL_WHITELIST,
   suspiciousKeywords: {
-    upi: ["reward","cashback","refund","verify","kyc","lottery","gift","support","helpdesk","prize","winner","free","urgent","rbi","gov","income","pm","claim","bonus","offer"],
+    //upi: ["reward","cashback","refund","verify","kyc","lottery","gift","support","helpdesk","prize","winner","free","urgent","rbi","gov","income","pm","claim","bonus","offer"],
     email: ["reward","lottery","cashback","refund","verify","kyc","gift","support","admin","official","bank","payment","winner","crypto","investment","urgent","prize","claim","bonus","offer","free","alert","suspended","confirm","update","unusual","income","tax","bitcoin","nft","airdrop","token","wallet","helpdesk","earn"],
     sms: ["otp","pin","cvv","password","account","suspended","verify","click","link","won","prize","lottery","congratulations","free","gift","urgent","immediately","atm","card"],
     domain: ["login","secure","verify","account","update","confirm","bank","wallet","pay","reward","free","win","prize","offer","cheap","discount","deal"],
