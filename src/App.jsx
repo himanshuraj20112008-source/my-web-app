@@ -2282,7 +2282,7 @@ function LearnPage() {
                   {prog.completed?`✓ ${prog.score}`:`${answeredCount} in progress`}
                 </span>
               )}
-              <div style={{fontSize:24,marginBottom:8}}>{t.icon}</div>
+              <t.icon size={24} color={t.c} style={{marginBottom:8}}/>
               <div style={{fontWeight:600,fontSize:13,color:t.c,marginBottom:4}}>{t.t}</div>
               <div style={{color:C.muted,fontSize:11,lineHeight:1.5}}>{t.d}</div>
             </div>
