@@ -1683,19 +1683,27 @@ function HomePage({ setPage, setDefaultTab }) {
       <div style={{padding:"0 12px 16px"}}>
         <h2 style={{textAlign:"center",fontSize:14,fontWeight:600,marginBottom:2}}>Comprehensive Security Toolkit</h2>
         <p style={{textAlign:"center",color:C.muted,fontSize:11,marginBottom:10}}>Hybrid rule engine + AI — built to replace simple keyword checkers</p>
-        <div className="mobile-tools" style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+       <div className="mobile-tools" style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
           {tools.map(f=>(
-            <div key={f.t} className="glass mobile-tool-card" style={{padding:"10px 10px",cursor:"pointer",transition:"all .2s"}}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(0,212,255,.35)";e.currentTarget.style.transform="translateY(-2px)"}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.transform=""}}
+            <div key={f.t} className="glass mobile-tool-card" style={{padding:"14px 14px",cursor:"pointer",transition:"all .2s",position:"relative",borderTop:`2px solid ${f.color}`,overflow:"hidden"}}
+              onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 8px 20px ${f.color}22`}}
+              onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="none"}}
              onClick={()=>{
-    const tabMap={"UPI Fraud Guard":"upi","URL Analyzer":"url","Phone Checker":"phone","Email Verifier":"email","SMS Scam Detector":"sms","Domain Intel":"domain","Password Checker":"password"};
+    const tabMap={"URL Analyzer":"url","Phone Checker":"phone","Email Verifier":"email","SMS Scam Detector":"sms","Domain Intel":"domain","Password Checker":"password"};
     setDefaultTab(tabMap[f.t]||"url");
     setPage("Scanner");
 }}>
-              <div style={{fontSize:18,marginBottom:4}}>{f.icon}</div>
-              <div style={{fontWeight:600,fontSize:11,marginBottom:2}}>{f.t}</div>
-              <div style={{color:C.muted,fontSize:10,lineHeight:1.4}}>{f.d}</div>
+              {f.badge && (
+                <span style={{position:"absolute",top:10,right:10,fontSize:8,fontWeight:700,padding:"2px 8px",borderRadius:20,background:`${f.color}18`,color:f.color,border:`1px solid ${f.color}45`,letterSpacing:.3}}>
+                  {f.badge}
+                </span>
+              )}
+              <div style={{width:32,height:32,borderRadius:8,background:`${f.color}15`,border:`1px solid ${f.color}35`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,marginBottom:8}}>{f.icon}</div>
+              <div style={{fontWeight:700,fontSize:12.5,marginBottom:4,color:C.text}}>{f.t}</div>
+              <div className="tool-desc" style={{color:C.muted,fontSize:10.5,lineHeight:1.5,marginBottom:10}}>{f.d}</div>
+              <div style={{fontSize:11,fontWeight:700,color:f.color,display:"flex",alignItems:"center",gap:4}}>
+                Try Now <span style={{fontSize:12}}>→</span>
+              </div>
             </div>
           ))}
         </div>
