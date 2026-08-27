@@ -2225,12 +2225,12 @@ function LearnPage() {
   const { today, lifetimeScore, saveAnswer, getTopicProgress } = useQuizProgress();
 
   const topics=[
-    {id:"phishing",icon:"🎣",t:"Phishing",d:"Fake emails, sites & messages",c:C.danger},
-    {id:"upi_fraud",icon:"💳",t:"UPI Fraud",d:"Fake payment & KYC scams",c:C.warning},
-    {id:"password_safety",icon:"🔐",t:"Password Safety",d:"Strong passwords & 2FA",c:C.blue},
-    {id:"social_engineering",icon:"📱",t:"Social Engineering",d:"Psychological manipulation",c:C.violet},
-    {id:"safe_browsing",icon:"🌐",t:"Safe Browsing",d:"Spotting malicious sites",c:C.success},
-    {id:"digital_privacy",icon:"🔒",t:"Digital Privacy",d:"Protecting personal data",c:C.cyan},
+    {id:"phishing",icon:Mail,t:"Phishing",d:"Fake emails, sites & messages",c:C.danger},
+    {id:"upi_fraud",icon:CreditCard,t:"UPI Fraud",d:"Fake payment & KYC scams",c:C.warning},
+    {id:"password_safety",icon:KeyRound,t:"Password Safety",d:"Strong passwords & 2FA",c:C.blue},
+    {id:"social_engineering",icon:Users,t:"Social Engineering",d:"Psychological manipulation",c:C.violet},
+    {id:"safe_browsing",icon:Globe,t:"Safe Browsing",d:"Spotting malicious sites",c:C.success},
+    {id:"digital_privacy",icon:ShieldCheck,t:"Digital Privacy",d:"Protecting personal data",c:C.cyan},
   ];
 
   if (activeTopic) {
