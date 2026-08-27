@@ -2870,7 +2870,7 @@ if (!user) {
   <User size={15}/> My Profile
 </button>
                 <button onClick={()=>{ setShowMenu(false); if(window.confirm("Logout from SentinelX?")) logout(); }} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:"transparent",border:"none",color:C.danger,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,textAlign:"left"}}>
-                  🚪 Logout
+                  <LogOut size={15}/> Logout
                 </button>
               </div>
             </>
