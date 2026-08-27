@@ -2783,7 +2783,7 @@ function AuthPage({ onLogin }) {
     return this.props.children;
   }
 }
-const NAV=[{id:"Home",icon:"🏠"},{id:"Scanner",icon:"🔍"},{id:"Dashboard",icon:"📊"},{id:"Learn",icon:"🎓"},{id:"History",icon:"🕐"}];
+const NAV=[{id:"Home",icon:Home},{id:"Scanner",icon:Search},{id:"Dashboard",icon:BarChart3},{id:"Learn",icon:GraduationCap},{id:"History",icon:History}];
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
