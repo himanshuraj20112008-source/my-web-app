@@ -1942,18 +1942,35 @@ Keep total response under 200 words. Be direct and practical. No fluff.`;
 
 function formatAIText(text) {
   if (!text) return null;
-  const lines = text.split("\n").map(l=>l.trim()).filter(l=>l.length>0);
+  const rawLines = text.split("\n").map(l=>l.trim());
+  const lines = rawLines.filter(l => {
+    if (l.length === 0) return false;
+    if (/^-{3,}$/.test(l)) return false; // drop stray "---" rules
+    if (/^\|.*\|$/.test(l)) return false; // drop raw markdown table rows
+    return true;
+  });
   return lines.map((line, i) => {
-    const parts = line.split(/(\*\*[^*]+\*\*)/g).filter(p=>p.length>0);
+    // Strip markdown header hashes (##, ###) but keep the text, styled as a mini-heading
+    const headerMatch = line.match(/^#{1,6}\s+(.*)$/);
+    const cleanLine = headerMatch ? headerMatch[1] : line;
+
+    const parts = cleanLine.split(/(\*\*[^*]+\*\*)/g).filter(p=>p.length>0);
     const rendered = parts.map((part, j) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return <strong key={j} style={{color:C.cyan,fontWeight:700}}>{part.slice(2,-2)}</strong>;
       }
       return <span key={j}>{part}</span>;
     });
-    const isBullet = /^[-•]\s+/.test(line) || /^\d+\.\s+/.test(line);
+    const isBullet = /^[-•]\s+/.test(cleanLine) || /^\d+\.\s+/.test(cleanLine);
     return (
-      <div key={i} style={{marginBottom:8,paddingLeft:isBullet?4:0}}>
+      <div key={i} style={{
+        marginBottom:8,
+        paddingLeft:isBullet?4:0,
+        fontWeight:headerMatch?700:400,
+        fontSize:headerMatch?14:13,
+        color:headerMatch?C.cyan:undefined,
+        marginTop:headerMatch&&i>0?10:0,
+      }}>
         {rendered}
       </div>
     );
