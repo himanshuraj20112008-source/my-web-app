@@ -1652,13 +1652,12 @@ function HomePage({ setPage, setDefaultTab }) {
   },[]);
   const stats=[{val:counts[0].toLocaleString()+"+",label:"Total Scans"},{val:counts[1].toLocaleString()+"+",label:"Threats Detected"},{val:counts[2].toLocaleString()+"+",label:"Users Protected"},{val:counts[3]+"+",label:"Intel Sources"}];
   const tools=[
-    //{icon:"💳",t:"UPI Fraud Guard",d:"Multi-heuristic UPI risk scoring with entropy, keyword & blacklist analysis"},
-    {icon:"🔗",t:"URL Analyzer",d:"Deep phishing, typosquatting, redirect chain & TLD reputation analysis"},
-    {icon:"📞",t:"Phone Checker",d:"Real-time NumVerify validation + spam database + community reports"},
-    {icon:"📧",t:"Email Verifier",d:"Disposable provider, spoofed domain & phishing indicator checks"},
-    {icon:"💬",t:"SMS Scam Detector",d:"AI-powered message classification with pattern & keyword scoring"},
-    {icon:"🌐",t:"Domain Intel",d:"Threat reputation, brand impersonation & entropy-based risk scoring"},
-    {icon:"🔑",t:"Password Checker",d:"Check if your password has appeared in known data breaches"},
+    {icon:"🔗",t:"URL Analyzer",d:"Deep phishing, typosquatting, redirect chain & TLD reputation analysis.",badge:"Real-time",color:C.blue},
+    {icon:"📞",t:"Phone Checker",d:"Real-time NumVerify validation + spam database + community reports.",badge:"Most Used",color:C.cyan},
+    {icon:"📧",t:"Email Verifier",d:"Disposable provider, spoofed domain & phishing indicator checks.",badge:null,color:C.cyan},
+    {icon:"💬",t:"SMS Scam Detector",d:"AI-powered message classification with pattern & keyword scoring.",badge:"AI Powered",color:C.blue},
+    {icon:"🌐",t:"Domain Intel",d:"Threat reputation, brand impersonation & entropy-based risk scoring.",badge:null,color:C.cyan},
+    {icon:"🔑",t:"Password Checker",d:"Check if your password has appeared in known data breaches.",badge:"Privacy-first",color:C.danger},
   ];
   return (
     <div className="fu">
