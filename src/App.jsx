@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Home, Search, BarChart3, GraduationCap, History, AlertTriangle, FileText, User, LogOut, Mail, CreditCard, KeyRound, Users, Globe, ShieldCheck, ShieldAlert, CheckCircle2, Calendar } from "lucide-react";
 
 const C = {
   bg:"#080E1C", surface:"rgba(255,255,255,0.035)", border:"rgba(0,212,255,0.13)",
