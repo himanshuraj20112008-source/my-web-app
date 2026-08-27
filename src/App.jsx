@@ -2058,9 +2058,9 @@ function DashboardPage({ history=[] }) {
       <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>📊 Dashboard</h2>
       <p style={{color:C.muted,fontSize:12,marginBottom:18}}>Your real scan activity overview</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,marginBottom:18}}>
-        {[["🔍","Total Scans",total.toLocaleString(),C.cyan],["🛡️","Threats Found",threatsFound.toLocaleString(),C.danger],["✅","Safe Scans",safeScans.toLocaleString(),C.success],["📅","This Week",thisWeekCount.toLocaleString(),C.blue]].map(([icon,label,val,color])=>(
+        {[[Search,"Total Scans",total.toLocaleString(),C.cyan],[ShieldAlert,"Threats Found",threatsFound.toLocaleString(),C.danger],[CheckCircle2,"Safe Scans",safeScans.toLocaleString(),C.success],[Calendar,"This Week",thisWeekCount.toLocaleString(),C.blue]].map(([Icon,label,val,color])=>(
           <div key={label} className="glass-sm" style={{padding:"15px 12px",textAlign:"center"}}>
-            <div style={{fontSize:20,marginBottom:6}}>{icon}</div>
+            <div style={{marginBottom:6,display:"flex",justifyContent:"center"}}><Icon size={20} color={color}/></div>
             <div className="mono" style={{fontSize:19,fontWeight:700,color}}>{val}</div>
             <div style={{fontSize:11,color:C.muted,marginTop:4}}>{label}</div>
           </div>
