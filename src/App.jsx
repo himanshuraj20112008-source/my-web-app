@@ -2238,7 +2238,7 @@ function LearnPage() {
     const progress = getTopicProgress(activeTopic);
     return (
       <div className="fu" style={{padding:"22px 18px"}}>
-        <h2 style={{fontSize:18,fontWeight:700,marginBottom:14}}>{topicMeta.icon} {topicMeta.t} Quiz</h2>
+        <h2 style={{fontSize:18,fontWeight:700,marginBottom:14,display:"flex",alignItems:"center",gap:8}}><topicMeta.icon size={20} color={topicMeta.c}/> {topicMeta.t} Quiz</h2>
         <QuizView
           topic={activeTopic}
           label={topicMeta.t}
