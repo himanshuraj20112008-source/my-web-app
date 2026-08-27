@@ -2252,7 +2252,7 @@ function LearnPage() {
 
   return (
     <div className="fu" style={{padding:"22px 18px"}}>
-      <h2 style={{fontSize:20,fontWeight:700,marginBottom:3}}>🎓 Cyber Education Hub</h2>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:3,display:"flex",alignItems:"center",gap:8}}><GraduationCap size={22}/> Cyber Education Hub</h2>
       <p style={{color:C.muted,fontSize:12,marginBottom:14}}>Fresh quiz every day — pick a topic to start</p>
 
       <div style={{display:"flex",gap:10,marginBottom:18}}>
