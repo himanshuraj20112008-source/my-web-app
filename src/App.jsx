@@ -1691,7 +1691,7 @@ function HomePage({ setPage, setDefaultTab }) {
               onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.transform=""}}
              onClick={()=>{
     const tabMap={"UPI Fraud Guard":"upi","URL Analyzer":"url","Phone Checker":"phone","Email Verifier":"email","SMS Scam Detector":"sms","Domain Intel":"domain","Password Checker":"password"};
-    setDefaultTab(tabMap[f.t]||"upi");
+    setDefaultTab(tabMap[f.t]||"url");
     setPage("Scanner");
 }}>
               <div style={{fontSize:18,marginBottom:4}}>{f.icon}</div>
