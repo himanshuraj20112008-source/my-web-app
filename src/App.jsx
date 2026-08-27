@@ -2778,7 +2778,7 @@ useEffect(() => {
     window.removeEventListener("offline", goOffline);
   };
 }, []);
-const [defaultTab,setDefaultTab]=useState("upi");
+const [defaultTab,setDefaultTab]=useState("url");
 const [showMenu, setShowMenu] = useState(false);
 
 const [showLegal, setShowLegal] = useState(false);
