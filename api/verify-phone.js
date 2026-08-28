@@ -90,6 +90,7 @@ export default async function handler(req, res) {
       numverify: !!numverifyData,
       ipqs: !!ipqsData,
     },
-    indicators,            // feed these weights into your existing scoring aggregator
+        indicators,            // feed these weights into your existing scoring aggregator
+    _debug_ipqs_raw: ipqsData, // TEMPORARY — remove after confirming field names
   });
 }
