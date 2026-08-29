@@ -1645,7 +1645,7 @@ function HistoryPage({ history, deleteScan, clearHistory }) {
   );
 }
 const SCAN_TYPES = [
-  //{id:"upi",label:"UPI ID",icon:"💳",ph:"merchant@paytm"},
+  {id:"upi",label:"UPI ID",icon:"💳",ph:"merchant@paytm"},
   {id:"url",label:"URL",icon:"🔗",ph:"https://example.com"},
   {id:"phone",label:"Phone",icon:"📞",ph:"+91 98765 43210"},
   {id:"email",label:"Email",icon:"📧",ph:"user@domain.com"},
