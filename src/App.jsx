@@ -1706,7 +1706,7 @@ function HomePage({ setPage, setDefaultTab }) {
               onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow=`0 8px 20px ${f.color}22`}}
               onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="none"}}
              onClick={()=>{
-    const tabMap={"URL Analyzer":"url","Phone Checker":"phone","Email Verifier":"email","SMS Scam Detector":"sms","Domain Intel":"domain","Password Checker":"password"};
+   const tabMap={"UPI Fraud Guard":"upi","URL Analyzer":"url","Phone Checker":"phone","Email Verifier":"email","SMS Scam Detector":"sms","Domain Intel":"domain","Password Checker":"password"};
     setDefaultTab(tabMap[f.t]||"url");
     setPage("Scanner");
 }}>
