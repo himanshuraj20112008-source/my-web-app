@@ -183,14 +183,14 @@ const EMAIL_BLACKLIST = generateEmailBlacklist();
 const EMAIL_WHITELIST = generateEmailWhitelist();
 
 const DB = {
-  //upiBlacklist: new Set(["fraud@paytm","scam@upi","lottery@ybl","reward@okaxis","refund@oksbi","kyc@paytm","helpdesk@upi","cashback@ybl","verify@okicici","support@upi","prize@ybl","gift@okaxis","winner@oksbi","free@upi","urgent@paytm","pm@ybl","gov@upi","rbi@okaxis","income@oksbi","amazon@fake"]),
-  //upiWhitelist: new Set(["zomato@icici","swiggy@icici","amazon@apl","flipkart@ybl","paytmmall@paytm","netflix@icici","spotify@federal","irctc@upi","hdfc@hdfcbank","sbi@sbi","airtel@airtel","jio@jiomoney","ola@okaxis","uber@ybl","phonepe@ybl"]),
+  upiBlacklist: new Set(["fraud@paytm","scam@upi","lottery@ybl","reward@okaxis","refund@oksbi","kyc@paytm","helpdesk@upi","cashback@ybl","verify@okicici","support@upi","prize@ybl","gift@okaxis","winner@oksbi","free@upi","urgent@paytm","pm@ybl","gov@upi","rbi@okaxis","income@oksbi","amazon@fake"]),
+  upiWhitelist: new Set(["zomato@icici","swiggy@icici","amazon@apl","flipkart@ybl","paytmmall@paytm","netflix@icici","spotify@federal","irctc@upi","hdfc@hdfcbank","sbi@sbi","airtel@airtel","jio@jiomoney","ola@okaxis","uber@ybl","phonepe@ybl"]),
   phoneBlacklist: new Set(["9999999999","8888888888","7777777777","1234567890","0000000000","9876543210","9876543200","9123456789","8123456789","7012345678"]),
   domainBlacklist: new Set(["paypal-secure-login.xyz","amazon-offers.net","sbi-reward.com","hdfc-kyc-verify.in","free-iphone.win","rbi-lottery.org","pm-kisan-help.xyz","google-prize.info","whatsapp-reward.net","jio-cashback.co"]),
   emailBlacklist: EMAIL_BLACKLIST,
   emailWhitelist: EMAIL_WHITELIST,
   suspiciousKeywords: {
-    //upi: ["reward","cashback","refund","verify","kyc","lottery","gift","support","helpdesk","prize","winner","free","urgent","rbi","gov","income","pm","claim","bonus","offer"],
+    upi: ["reward","cashback","refund","verify","kyc","lottery","gift","support","helpdesk","prize","winner","free","urgent","rbi","gov","income","pm","claim","bonus","offer"],
     email: ["reward","lottery","cashback","refund","verify","kyc","gift","support","admin","official","bank","payment","winner","crypto","investment","urgent","prize","claim","bonus","offer","free","alert","suspended","confirm","update","unusual","income","tax","bitcoin","nft","airdrop","token","wallet","helpdesk","earn"],
     sms: ["otp","pin","cvv","password","account","suspended","verify","click","link","won","prize","lottery","congratulations","free","gift","urgent","immediately","atm","card"],
     domain: ["login","secure","verify","account","update","confirm","bank","wallet","pay","reward","free","win","prize","offer","cheap","discount","deal"],
