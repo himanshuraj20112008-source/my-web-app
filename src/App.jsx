@@ -238,7 +238,7 @@ async function callGoogleSafeBrowsing(rawUrl) {
 
 // ─── RISK ENGINE ──────────────────────────────────────────────────────────────
 const RISK_ENGINE = {
-  /*async upi(raw) {
+  async upi(raw) {
     const id = raw.trim().toLowerCase();
     const indicators = [], weights = [];
 
@@ -412,7 +412,7 @@ const RISK_ENGINE = {
         ? "Some indicators found. Double-check recipient identity before proceeding with payment." 
         : "No major concerns. Still verify recipient independently as good practice." 
     };
-  },*/
+  },
 
   // ─── UPGRADED PHONE SCANNER with NumVerify ───────────────────────────────
   async phone(raw) {
