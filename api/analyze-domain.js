@@ -118,10 +118,10 @@ async function checkWHOIS(domain) {
     });
 
     req.on("error", (e) => resolve({ available: false, reason: e.message }));
-    req.setTimeout(6000, () => {
-      req.destroy();
-      resolve({ available: false, reason: "WHOIS timeout" });
-    });
+    req.setTimeout(12000, () => {
+  req.destroy();
+  resolve({ available: false, reason: "WHOIS timeout" });
+});
     req.end();
   });
 }
