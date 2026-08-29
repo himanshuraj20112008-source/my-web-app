@@ -85,12 +85,11 @@ export default async function handler(req, res) {
     isVoip,
     isPrepaid,
     fraudScore,
-    confidence,           // "high" | "medium" | "low"
+    confidence,
     sourcesUsed: {
       numverify: !!numverifyData,
       ipqs: !!ipqsData,
     },
-        indicators,            // feed these weights into your existing scoring aggregator
-    _debug_ipqs_raw: ipqsData, // TEMPORARY — remove after confirming field names
+    indicators,
   });
 }
