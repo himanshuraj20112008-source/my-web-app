@@ -1221,9 +1221,20 @@ if (vt.malicious >= 5 || maliciousRatio >= 0.10) {
       // VirusTotal signals
       if (realtime.virusTotal?.available) {
         const vt = realtime.virusTotal;
-        if (vt.malicious >= 5) { indicators.push(`🚨 VirusTotal: ${vt.malicious}/${vt.total} engines flagged MALICIOUS`); weights.push(85); }
-        else if (vt.malicious >= 1) { indicators.push(`⚠️ VirusTotal: ${vt.malicious}/${vt.total} engines flagged suspicious`); weights.push(40); }
-        else { indicators.push(`✅ VirusTotal: Clean (0/${vt.total} engines flagged)`); weights.push(-10); }
+        const maliciousRatio = vt.total > 0 ? (vt.malicious / vt.total) : 0;
+if (vt.malicious >= 5 || maliciousRatio >= 0.10) {
+  indicators.push(`🚨 VirusTotal: ${vt.malicious}/${vt.total} engines flagged MALICIOUS (${(maliciousRatio*100).toFixed(1)}% consensus)`);
+  weights.push(85);
+} else if (vt.malicious >= 3 || maliciousRatio >= 0.05) {
+  indicators.push(`⚠️ VirusTotal: ${vt.malicious}/${vt.total} engines flagged suspicious`);
+  weights.push(45);
+} else if (vt.malicious >= 1) {
+  indicators.push(`ℹ️ VirusTotal: ${vt.malicious}/${vt.total} engine flagged (isolated, low-confidence signal)`);
+  weights.push(12);
+} else {
+  indicators.push(`✅ VirusTotal: Clean (0/${vt.total} engines flagged)`);
+  weights.push(-10);
+}
         if (vt.reputation !== null && vt.reputation < -5) { indicators.push(`🔴 VirusTotal reputation score: ${vt.reputation}`); weights.push(20); }
       } else {
         indicators.push("⚠️ VirusTotal: Unavailable (add API key in Vercel)");
