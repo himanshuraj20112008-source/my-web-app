@@ -145,8 +145,8 @@ async function checkSSL(domain) {
           const issuer    = cert.issuer?.O || cert.issuer?.CN || "Unknown";
           const isExpired = daysLeft !== null && daysLeft < 0;
           const isSelfSigned = cert.issuer?.CN === cert.subject?.CN;
-          const isTrustedIssuer = ["Let's Encrypt","DigiCert","Comodo","GlobalSign","Sectigo","GeoTrust","Thawte"]
-            .some(ca => issuer.includes(ca));
+          const isTrustedIssuer = ["Let's Encrypt","DigiCert","Comodo","GlobalSign","Sectigo","GeoTrust","Thawte","Google Trust Services","GTS","Amazon","Microsoft","Cloudflare"]
+  .some(ca => issuer.includes(ca));
 
           resolve({
             available: true, hasSSL: true,
